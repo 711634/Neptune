@@ -103,5 +103,5 @@ struct TaskGraphItemView: View {
     try? graph.addTask(task1)
     try? graph.addTask(task2)
 
-    TaskGraphView(taskGraph: graph)
+    TaskGraphView(taskGraph: graph, onTaskSelected: nil)
 }
