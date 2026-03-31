@@ -1,6 +1,6 @@
 # Neptune — Local Autonomous Agent Platform
 
-[![Build Status](https://github.com/your-org/neptune/workflows/CI/badge.svg)](https://github.com/your-org/neptune/actions)
+[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)]((https://github.com/your-org/neptune/releases))
 [![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-green)](https://www.apple.com/macos/)
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-blue)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
@@ -21,10 +21,12 @@ Neptune is a **lightweight, battery-efficient autonomous agent platform** that b
 
 ### Installation
 
-1. Download `Neptune.dmg` from [Releases](https://github.com/your-org/neptune/releases)
-2. Drag `Neptune.app` to `/Applications`
-3. Launch Neptune
-4. Configure Claude executable path in Settings (default: `/opt/homebrew/bin/claude`)
+1. Download `Neptune.dmg` from [Releases](https://github.com/anthropics/neptune/releases)
+2. Double-click `Neptune.dmg` to mount
+3. Drag `Neptune.app` to `/Applications`
+4. Unmount the disk image (eject from Finder)
+5. Launch Neptune from `/Applications/Neptune.app`
+6. On first launch, configure Claude Code CLI path in Settings (typically `/opt/homebrew/bin/claude`)
 
 ### Create a Project
 
@@ -260,15 +262,14 @@ Neptune Settings include:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Areas we're looking for help:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines, development setup, and areas we're looking for help:
 
-- **Provider adapters** — Add support for new tools
+- **Provider adapters** — Add support for new tools (Codex, local models, etc.)
 - **Skill packs** — Create YAML blueprints for more project types
-- **Windows version** — Help build the Windows shell
-- **Documentation** — Improve guides and examples
-- **Testing** — Report bugs, test edge cases
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+- **Windows version** — Help build the Windows desktop shell
+- **Documentation** — Improve guides, examples, and technical docs
+- **Testing** — Report bugs, verify workflows, test edge cases
+- **UI/UX** — Design improvements, accessibility enhancements
 
 ## 📄 License
 
@@ -281,11 +282,13 @@ Neptune draws inspiration from:
 - **Clonk** — Autonomous orchestration architecture
 - **Claude Code CLI** — Local execution foundation
 
-## 📞 Contact
+## 📞 Support & Feedback
 
-- **Issues & Feature Requests** — [GitHub Issues](https://github.com/your-org/neptune/issues)
-- **Discussions** — [GitHub Discussions](https://github.com/your-org/neptune/discussions)
-- **Documentation** — [https://neptune.docs](https://neptune.docs)
+- **Issues & Feature Requests** — [GitHub Issues](https://github.com/anthropics/neptune/issues)
+- **Discussions** — [GitHub Discussions](https://github.com/anthropics/neptune/discussions)
+- **Documentation** — See [docs/](docs/) for technical deep-dives
+- **Architecture** — [docs/architecture/PROVIDER_ADAPTERS.md](docs/architecture/PROVIDER_ADAPTERS.md)
+- **Windows Roadmap** — [docs/WINDOWS_ROADMAP.md](docs/WINDOWS_ROADMAP.md)
 
 ---
 
