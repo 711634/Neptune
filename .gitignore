@@ -47,3 +47,4 @@ package-lock.json
 # Temporary
 *.tmp
 *.bak
+.claude/
