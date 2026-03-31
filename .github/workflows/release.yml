@@ -4,122 +4,300 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Build macOS DMG
   build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache brew dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            /opt/homebrew/Cellar/xcodegen
+            /opt/homebrew/Cellar/create-dmg
+          key: brew-${{ runner.os }}-${{ hashFiles('**/.github/workflows/release.yml') }}
+          restore-keys: brew-${{ runner.os }}-
 
       - name: Set up Swift
         run: swift --version
 
       - name: Install dependencies
         run: |
-          brew install xcodegen create-dmg
+          brew install xcodegen create-dmg 2>&1 | grep -E 'Installing|Upgrading|already' || true
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build macOS app
+      - name: Build macOS app (Release)
         run: |
           xcodebuild build \
             -project Neptune.xcodeproj \
             -scheme Neptune \
             -configuration Release \
-            -derivedDataPath build
+            -derivedDataPath build \
+            CONFIGURATION_BUILD_DIR=build/Build/Products/Release
+
+      - name: Verify app binary exists
+        run: |
+          BINARY="build/Build/Products/Release/Neptune.app/Contents/MacOS/Neptune"
+          if [ ! -f "$BINARY" ]; then
+            echo "ERROR: App binary not found at $BINARY"
+            ls -la build/Build/Products/Release/Neptune.app/Contents/MacOS/ || echo "MacOS directory missing"
+            exit 1
+          fi
+          echo "✓ App binary verified: $BINARY"
+          otool -L "$BINARY" | head -5
 
       - name: Create DMG
         run: |
+          set -e
           mkdir -p dist
+          ICON_PATH="Neptune/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png"
+          if [ ! -f "$ICON_PATH" ]; then
+            echo "ERROR: Icon not found at $ICON_PATH"
+            exit 1
+          fi
           create-dmg \
-            --volname "Neptune" \
-            --volicon "Neptune/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" \
+            --volname "Neptune ${{ github.ref_name }}" \
+            --volicon "$ICON_PATH" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
             --icon "Neptune.app" 150 200 \
             --hide-extension "Neptune.app" \
-            dist/Neptune.dmg \
-            build/Build/Products/Release/Neptune.app
+            "dist/Neptune-${{ github.ref_name }}.dmg" \
+            "build/Build/Products/Release/Neptune.app"
+
+      - name: Verify DMG created
+        run: |
+          DMG_FILE="dist/Neptune-${{ github.ref_name }}.dmg"
+          if [ ! -f "$DMG_FILE" ]; then
+            echo "ERROR: DMG not created"
+            ls -la dist/
+            exit 1
+          fi
+          SIZE=$(du -h "$DMG_FILE" | cut -f1)
+          echo "✓ DMG created: $SIZE"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: dist/Neptune.dmg
-          retention-days: 1
+          path: dist/*.dmg
+          retention-days: 5
+          if-no-files-found: error
 
-  # Build Windows MSI
   build-windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Build (attempt 1)"
+            attempt: 1
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-registry-
+
+      - name: Cache Cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-git-
+
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: windows/src-tauri/target
+          key: ${{ runner.os }}-cargo-build-${{ matrix.attempt }}-${{ hashFiles('windows/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ matrix.attempt }}-
+            ${{ runner.os }}-cargo-build-
+
+      - name: Cache npm modules
+        uses: actions/cache@v4
+        with:
+          path: windows/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('windows/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: windows/package-lock.json
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
+          components: rustfmt,clippy
 
-      - name: Install Node dependencies (Windows)
+      - name: Install Rust Windows target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - name: Install dependencies (root)
         working-directory: ./windows
-        run: npm install
+        run: npm ci
 
-      - name: Build Windows MSI
+      - name: Build Rust first (verify compilation)
+        working-directory: ./windows/src-tauri
+        run: |
+          cargo build --release --verbose 2>&1 | tail -50
+
+      - name: Build Tauri (full bundle)
         working-directory: ./windows
-        run: npm run tauri build
+        run: npm run tauri build -- --release
 
-      - name: Find and upload MSI artifact
+      - name: Verify MSI exists
+        run: |
+          $msiFiles = Get-Item "windows/src-tauri/target/release/bundle/msi/*.msi" -ErrorAction SilentlyContinue
+          if (-not $msiFiles) {
+            echo "ERROR: No MSI files found in windows/src-tauri/target/release/bundle/msi/"
+            Get-ChildItem -Recurse "windows/src-tauri/target/release/bundle/" -ErrorAction SilentlyContinue | Select-Object FullName
+            exit 1
+          }
+          foreach ($file in $msiFiles) {
+            $size = [math]::Round((Get-Item $file).Length / 1MB, 2)
+            echo "✓ Found: $(Split-Path -Leaf $file) - ${size} MB"
+          }
+
+      - name: Verify exe exists (if generated)
+        run: |
+          $exeFiles = Get-Item "windows/src-tauri/target/release/*.exe" -ErrorAction SilentlyContinue
+          if ($exeFiles) {
+            foreach ($file in $exeFiles) {
+              $size = [math]::Round((Get-Item $file).Length / 1MB, 2)
+              echo "✓ Found EXE: $(Split-Path -Leaf $file) - ${size} MB"
+            }
+          } else {
+            echo "No EXE found (expected if bundling only)"
+          }
+
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-msi
-          path: windows/target/release/bundle/msi/*.msi
-          retention-days: 1
+          path: |
+            windows/src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 5
+          if-no-files-found: error
 
-  # Create GitHub Release with assets
   create-release:
     needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Download macOS artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-dmg
-          path: artifacts/macos
+          path: artifacts
 
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-msi
-          path: artifacts/windows
-
-      - name: Get release notes
-        id: release_notes
+      - name: Verify artifacts exist
+        id: check
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          NOTES=$(grep -A 50 "^## \[$VERSION\]" CHANGELOG.md || echo "No changelog entry found. Check GitHub release.")
+          set +e
+          HAS_DMG=0
+          HAS_MSI=0
+
+          if find artifacts/macos-dmg -name "*.dmg" 2>/dev/null | grep -q .; then
+            HAS_DMG=1
+            echo "✓ Found DMG artifacts"
+            find artifacts/macos-dmg -type f -exec ls -lh {} \;
+          else
+            echo "⚠ No DMG artifacts found"
+          fi
+
+          if find artifacts/windows-msi -name "*.msi" 2>/dev/null | grep -q .; then
+            HAS_MSI=1
+            echo "✓ Found MSI artifacts"
+            find artifacts/windows-msi -type f -exec ls -lh {} \;
+          else
+            echo "⚠ No MSI artifacts found"
+          fi
+
+          echo "has_dmg=$HAS_DMG" >> $GITHUB_OUTPUT
+          echo "has_msi=$HAS_MSI" >> $GITHUB_OUTPUT
+
+          if [ $HAS_DMG -eq 0 ] || [ $HAS_MSI -eq 0 ]; then
+            echo "ERROR: Missing artifacts - cannot create release"
+            exit 1
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract release notes from CHANGELOG for this version
+            NOTES=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '$ d' | tail -n +2)
+            if [ -z "$NOTES" ]; then
+              NOTES="See CHANGELOG.md for details"
+            fi
+          else
+            # Generate from git log
+            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$PREV_TAG" ]; then
+              NOTES=$(git log --pretty=format:'- %s (%an)' | head -20)
+            else
+              NOTES=$(git log --pretty=format:'- %s (%an)' "$PREV_TAG"..HEAD | head -20)
+            fi
+          fi
+
           echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "## Release $VERSION" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Downloads" >> $GITHUB_OUTPUT
+          echo "- **macOS**: Neptune-$VERSION.dmg" >> $GITHUB_OUTPUT
+          echo "- **Windows**: Neptune_*_x64_en-US.msi" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/macos/Neptune.dmg
-            artifacts/windows/**/*.msi
-          body: ${{ steps.release_notes.outputs.notes }}
+            artifacts/macos-dmg/*.dmg
+            artifacts/windows-msi/*.msi
+          body: ${{ steps.notes.outputs.notes }}
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        if: always()
+        run: |
+          echo "## Release Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**DMG**: ${{ steps.check.outputs.has_dmg == 1 && '✓ Built' || '✗ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**MSI**: ${{ steps.check.outputs.has_msi == 1 && '✓ Built' || '✗ Missing' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

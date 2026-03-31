@@ -112,3 +112,8 @@ docs/
 ---
 
 **Neptune v1.0-beta** — *Local autonomous agents, no cloud required.*
+## [v1.0.0] - 2026-03-31
+- Initial production release
+- Cross-platform macOS DMG + Windows MSI
+- Swift macOS app + Tauri Windows app
+
