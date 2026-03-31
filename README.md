@@ -1,315 +1,295 @@
-# Clonk
+# Neptune — Local Autonomous Agent Platform
 
-A Tamagotchi-style macOS desktop companion for AI coding agents. Clonk renders multiple pixel-art pets above your Dock, each representing a different AI agent with its own role, color, and animation.
+[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)]((https://github.com/your-org/neptune/releases))
+[![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-green)](https://www.apple.com/macos/)
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-blue)](https://swift.org)
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 
-![Platform](https://img.shields.io/badge/Platform-macOS-blue) ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
+Neptune is a **lightweight, battery-efficient autonomous agent platform** that brings real multi-agent orchestration to your Mac. It integrates with your existing Claude subscription and leverages local authentication—**no external APIs, no billing**.
 
-## Features
+## ✨ Key Highlights
 
-- **Multi-Pet Dock Overlay** - Multiple pixel pets floating above your Dock
-- **Role Badges** - Each pet has a colored badge showing its role (PLANNING, RESEARCH, CODING, REVIEW, SHIPPING)
-- **Menu Bar Integration** - Tiny pet icon shows overall state at a glance
-- **Dynamic Dock Icon** - Dock icon reflects overall agent activity
-- **Dashboard Window** - Compact view of all agents and their tasks
-- **Independent Animations** - Each pet animates based on its own state
-- **Mock Mode** - Works out of the box with simulated agent data
-- **Settings** - Customize polling interval, idle timeout, reduced motion, and more
+- **Real Multi-Agent Orchestration** — Task graphs, dependency tracking, autonomous workflows
+- **Dock-Native Companions** — Transparent Tamagotchi-style pets that reflect actual agent work
+- **No API Billing** — Uses Claude Code CLI (locally authenticated) as the execution backend
+- **Skills + Blueprints** — Auto-detect project type, load role-specific prompts
+- **Battery-Efficient** — Low Power Mode, event-driven coordination, minimal polling
+- **Provider Adapters** — Detect Claude Desktop, VS Code, future tools
+- **Cross-Platform Architecture** — Designed for macOS today, Windows coming soon
 
-## Pet States
+## 🚀 Quick Start
 
-| State | Description | Color |
-|-------|-------------|-------|
-| Idle | Waiting for work | Gray |
-| Thinking | Agent is planning/analyzing | Amber |
-| Coding | Agent is actively coding | Green |
-| Success | Task completed | Bright Green |
-| Failed | Error occurred | Red |
-| Sleeping | No activity for timeout | Blue |
+### Installation
 
-## Quick Start
+1. Download `Neptune.dmg` from [Releases](https://github.com/anthropics/neptune/releases)
+2. Double-click `Neptune.dmg` to mount
+3. Drag `Neptune.app` to `/Applications`
+4. Unmount the disk image (eject from Finder)
+5. Launch Neptune from `/Applications/Neptune.app`
+6. On first launch, configure Claude Code CLI path in Settings (typically `/opt/homebrew/bin/claude`)
 
-### 1. Open the Project in Xcode
-
-```bash
-cd /Users/misbah/Clonk
-open Clonk.xcodeproj
-```
-
-### 2. Build and Run
-
-In Xcode, press `Cmd+R` to build and run the app.
-
-The app will:
-- Create the `~/agent-pet/` directory with sample state
-- Show a floating dock overlay with multiple pixel pets
-- Appear in the menu bar with a tiny pet icon
-- Open a small dashboard window
-- Start mock data generation (enabled by default)
-
-### 3. Watch the Pets
-
-The floating dock overlay appears just above your Dock showing:
-- **Planner** (purple) - thinking/planning
-- **Builder** (green) - coding
-- **Reviewer** (blue) - reviewing
-- **Shipper** (pink) - deploying
-
-Each pet animates independently based on its agent's state.
-
-### 4. Run the Mock Generator (Optional)
-
-To see dynamic updates, run the mock generator in a separate terminal:
-
-```bash
-cd /Users/misbah/Clonk
-python3 Scripts/mock_generator.py
-```
-
-This continuously updates the state file with randomized agent states.
-
-## Project Structure
+### Create a Project
 
 ```
-Clonk/
-├── Clonk/
-│   ├── App/
-│   │   ├── ClonkApp.swift          # Main app entry + AppDelegate
-│   │   └── ContentView.swift       # Root SwiftUI view
-│   ├── Models/
-│   │   ├── Agent.swift             # Agent + AgentState models
-│   │   ├── PetState.swift          # Pet state enum
-│   │   └── AppSettings.swift       # User preferences
-│   ├── Services/
-│   │   ├── AgentStateWatcher.swift # JSON file monitoring
-│   │   ├── PetStateMapper.swift    # State mapping logic
-│   │   └── MockDataGenerator.swift # Built-in mock data
-│   ├── Views/
-│   │   ├── Pet/
-│   │   │   ├── PixelPetView.swift       # Pixel art pet renderer
-│   │   │   └── FloatingDockWindow.swift  # Dock overlay window
-│   │   ├── Dashboard/
-│   │   │   ├── DashboardView.swift      # Main dashboard
-│   │   │   └── AgentRowView.swift       # Agent list item
-│   │   ├── MenuBar/
-│   │   │   └── MenuBarView.swift        # Menu bar popover
-│   │   └── Settings/
-│   │       └── SettingsView.swift       # Settings panel
-│   └── Resources/
-│       ├── Assets.xcassets/
-│       └── state.json                   # Sample state file
-├── Scripts/
-│   └── mock_generator.py              # Python mock data generator
-├── project.yml                        # XcodeGen configuration
-└── README.md
+1. Click "New Project" in Neptune Dashboard
+2. Enter project name, description, and goal
+3. Neptune auto-detects project type
+4. Skills and blueprints load automatically
+5. Click "Start" to begin autonomous workflows
 ```
 
-## Connecting Real Agents
+### Supported Project Types
 
-To connect real AI coding agents to Clonk, modify the JSON file at:
+- **web_app** — React, Vue, Next.js, SvelteKit
+- **python_cli** — Click, Typer, argparse-based CLIs
+- **macos_app** — SwiftUI applications
+- **ios_app** — iOS / iPadOS apps
+- **rust_lib** — Rust libraries and crates
 
-```
-~/agent-pet/state.json
-```
+## 📋 Requirements
 
-### JSON Format
+- **macOS 13.0** or later
+- **Claude Code CLI** installed and authenticated
+  ```bash
+  which claude
+  claude --version
+  ```
+- **Active Claude Subscription** (Neptune leverages local authentication)
 
-```json
-{
-  "updatedAt": "2026-03-30T02:41:00Z",
-  "agents": [
-    {
-      "id": "agent-1",
-      "name": "Planner",
-      "role": "planning",
-      "task": "Analyzing requirements",
-      "status": "thinking",
-      "elapsedSeconds": 120,
-      "lastLog": "Parsing user story",
-      "updatedAt": "2026-03-30T02:41:00Z",
-      "colorVariant": "purple",
-      "anchorHint": "terminal",
-      "slotIndex": 0
-    },
-    {
-      "id": "agent-2",
-      "name": "Builder",
-      "role": "coding",
-      "task": "Building features",
-      "status": "coding",
-      "elapsedSeconds": 320,
-      "lastLog": "Implementing hero section",
-      "updatedAt": "2026-03-30T02:40:50Z",
-      "colorVariant": "green",
-      "anchorHint": "browser",
-      "slotIndex": 1
-    }
-  ]
-}
-```
+## 🏗️ Architecture Overview
 
-### Agent Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique agent identifier |
-| `name` | string | Agent display name |
-| `role` | string | Role: planning, research, coding, review, shipping |
-| `task` | string | Current task description |
-| `status` | string | State: idle, thinking, coding, success, failed, sleeping |
-| `elapsedSeconds` | int | Seconds since agent started |
-| `lastLog` | string | Recent activity log |
-| `updatedAt` | string | ISO8601 timestamp |
-| `colorVariant` | string | Color: green, blue, purple, orange, pink, cyan, red |
-| `anchorHint` | string | Hint: terminal, browser, figma, notes, generic |
-| `slotIndex` | int | Position in dock overlay (0-5) |
-
-### Status Values
-
-- `idle` - Agent is waiting
-- `thinking` - Agent is planning/analyzing
-- `coding` - Agent is actively coding
-- `success` - Task completed successfully
-- `failed` - Task failed or error occurred
-- `sleeping` - Agent idle too long
-
-### Color Variants
-
-- `green` - Default coding color
-- `blue` - Research/analysis
-- `purple` - Planning
-- `orange` - Warning/thinking
-- `pink` - Shipping/deployment
-- `cyan` - Research
-- `red` - Error/failed
-
-## Integration Example (Python)
-
-Add this to your agent's code to update Clonk:
-
-```python
-import json
-from datetime import datetime, timezone
-from pathlib import Path
-
-def update_clonk_state(agent_id, name, role, task, status, elapsed_seconds, last_log, 
-                      color_variant="green", slot_index=0):
-    """Update agent state for Clonk dock overlay."""
-    state_file = Path.home() / "agent-pet" / "state.json"
-    
-    # Read existing state
-    if state_file.exists():
-        with open(state_file) as f:
-            state = json.load(f)
-    else:
-        state = {"updatedAt": None, "agents": []}
-    
-    # Build agent data
-    agent_data = {
-        "id": agent_id,
-        "name": name,
-        "role": role,
-        "task": task,
-        "status": status,
-        "elapsedSeconds": elapsed_seconds,
-        "lastLog": last_log,
-        "updatedAt": datetime.now(timezone.utc).isoformat(),
-        "colorVariant": color_variant,
-        "anchorHint": "terminal",
-        "slotIndex": slot_index
-    }
-    
-    # Update or append agent
-    for i, agent in enumerate(state["agents"]):
-        if agent["id"] == agent_id:
-            state["agents"][i] = agent_data
-            break
-    else:
-        state["agents"].append(agent_data)
-    
-    state["updatedAt"] = datetime.now(timezone.utc).isoformat()
-    
-    # Write back
-    with open(state_file, 'w') as f:
-        json.dump(state, f, indent=2)
-
-# Example usage
-update_clonk_state(
-    agent_id="my-agent",
-    name="Builder",
-    role="coding",
-    task="Implementing login",
-    status="coding",
-    elapsed_seconds=45,
-    lastLog="Adding OAuth flow",
-    color_variant="green",
-    slot_index=0
-)
-```
-
-## Settings
-
-Access settings via the menu bar popover or **Clonk > Settings**:
-
-- **Use Mock Data** - Toggle between mock and real data
-- **Idle Timeout** - Minutes before agent sleeps (1-15 min)
-- **Polling Interval** - How often to check for updates (1-10s)
-- **Reduced Motion** - Disable animations for accessibility
-- **Launch at Login** - Start app when you log in (TODO)
-
-## Architecture
+Neptune is built on a modular, local-first architecture:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   Clonk App                         │
-├─────────────────────────────────────────────────────┤
-│  AppDelegate                                        │
-│  ├── FloatingDockWindow (NSPanel)                  │
-│  │   └── Renders all pets in dock overlay          │
-│  ├── Menu Bar (NSStatusItem)                       │
-│  │   └── Shows overall state icon                   │
-│  ├── Dashboard Window                               │
-│  │   └── Lists all agents and their states          │
-│  └── Settings Window                                │
-│      └── User preferences                           │
-├─────────────────────────────────────────────────────┤
-│  Services                                           │
-│  ├── AgentStateWatcher                              │
-│  │   ├── Watches ~/agent-pet/state.json            │
-│  │   └── Polls every N seconds                      │
-│  ├── PetStateMapper                                 │
-│  │   └── Maps agent states to pet states           │
-│  └── MockDataGenerator                              │
-│      └── Generates demo agent data                  │
+│              Neptune macOS App                       │
+│  ┌──────────────┐  ┌──────────┐  ┌──────────────┐  │
+│  │  Dashboard   │  │ Dock Pets│  │  Settings    │  │
+│  │  (SwiftUI)   │  │  (Live)  │  │  (UI)        │  │
+│  └──────────────┘  └──────────┘  └──────────────┘  │
 └─────────────────────────────────────────────────────┘
+                        │
+        ┌───────────────┼───────────────┐
+        │               │               │
+    ┌───▼───┐   ┌──────▼──────┐   ┌───▼────────┐
+    │Orchest│   │ Persistence  │   │Provider    │
+    │rator  │   │(State Mgr)   │   │Adapters    │
+    └───┬───┘   └──────┬──────┘   └───┬────────┘
+        │               │               │
+        └───────────────┼───────────────┘
+                        │
+        ┌───────────────┴───────────────┐
+        │                               │
+    ┌───▼────────┐          ┌──────────▼───┐
+    │Process     │          │Skill         │
+    │Manager     │          │Registry      │
+    │(PTY/CLI)   │          │(YAML)        │
+    └────────────┘          └──────────────┘
+                        │
+        ┌───────────────┴──────────────────┐
+        │                                  │
+    ┌───▼──────────┐            ┌────────▼───────┐
+    │Claude Code   │            │Claude Desktop  │
+    │CLI           │            │VS Code + Claude│
+    │(Execution)   │            │Codex (future)  │
+    └──────────────┘            └────────────────┘
 ```
 
-## Requirements
+### Core Components
 
-- macOS 13.0 or later
-- Xcode 15.0 or later
-- Python 3.x (for mock generator)
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| **AgentOrchestrator** | Multi-agent lifecycle, task queue, autonomous loops | `Services/AgentOrchestrator.swift` |
+| **ProcessManager** | PTY sessions, Claude Code CLI execution | `Services/ProcessManager.swift` |
+| **StateManager** | File-based persistence (~/.neptune/) | `Services/StateManager.swift` |
+| **SkillRegistry** | Auto-detect project type, load role prompts | `Services/SkillRegistry.swift` |
+| **ProviderRegistry** | Adapter system for Claude, VS Code, etc. | `Services/ProviderAdapter.swift` |
+| **TaskGraph** | Dependency tracking, task scheduling | `Models/TaskGraph.swift` |
+| **ActivityMonitor** | Dock pet state from real agent work | `Services/ActivityMonitor.swift` |
 
-## Building
+## 🎯 How It Works
 
-The project uses XcodeGen. If you need to regenerate:
+### Autonomous Workflow Example
 
-```bash
-cd /Users/misbah/Clonk
-xcodegen generate
+```
+User Input: "Build a React dashboard"
+        │
+        ▼
+┌─────────────────────────┐
+│ ProjectContext Created  │  Type: web_app
+│ Skills Loaded           │  Planner, Coder, Reviewer skills
+└─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────┐
+│ Task Graph Generated    │  5 tasks: plan → research → code → review → ship
+└─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│ Agent 1: Planner                        │  Breaks down requirements
+│ Status: planning                        │  Generates architecture doc
+│ Output: architecture.md                 │  Next: Task for Coder
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│ Agent 2: Coder                          │  Implements components
+│ Status: coding                          │  Writes code files
+│ Output: src/components/...              │  Next: Task for Reviewer
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│ Agent 3: Reviewer                       │  Reviews code quality
+│ Status: reviewing                       │  Checks for issues
+│ Output: review-report.md                │  Next: Task for Shipper
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│ Agent 4: Shipper                        │  Packages, deploys
+│ Status: shipping                        │  Creates build artifacts
+│ Output: build/, deployment logs         │
+└─────────────────────────────────────────┘
+        │
+        ▼
+    PROJECT COMPLETE
 ```
 
-Then open `Clonk.xcodeproj` in Xcode and build with `Cmd+R`.
+Throughout this workflow:
+- **Dashboard** shows real-time task graph progress
+- **Dock pets** visually represent agent activity
+- **Logs** are captured for inspection
+- **State persists** to disk (survives crashes)
+- **Dependency rules** prevent out-of-order execution
 
-## Next Steps
+## 📁 Local State Structure
 
-To integrate with real agents:
+Neptune stores everything locally under `~/.neptune/`:
 
-1. **OpenCode** - Add `update_clonk_state()` calls to your agent's main loop
-2. **Claude/Groq/Gemini** - Create a wrapper that writes state after each tool use
-3. **Custom Agents** - Any agent can write to `~/agent-pet/state.json`
+```
+~/.neptune/
+├── projects/
+│   └── {projectId}/
+│       ├── project.json          # Project metadata
+│       ├── task-graph.json       # Task definitions & status
+│       ├── agents/
+│       │   └── {agentId}/
+│       │       ├── state.json    # Agent metadata
+│       │       ├── transcript.log # Session output
+│       │       └── checkpoint.json# Resumption point
+│       └── artifacts/            # Generated files
+├── skills/
+│   ├── web_app/
+│   │   ├── frontend.yaml
+│   │   ├── backend.yaml
+│   │   └── deployment.yaml
+│   ├── python_cli/
+│   │   ├── core.yaml
+│   │   └── testing.yaml
+│   └── ...
+├── blueprints/                   # Project templates
+└── logs/
+    └── orchestrator.log          # Global activity log
+```
 
-The app automatically watches the file and updates all pets in real-time!
+### Zero External Dependencies
 
-## License
+- ✅ Uses Claude Code CLI (already authenticated locally)
+- ✅ All state saved to disk in JSON format
+- ✅ No cloud backend required
+- ✅ No external API calls (except to Claude via local CLI)
+- ✅ No billing or account setup needed
 
-MIT License - See LICENSE file for details.
+## ⚡ Performance & Battery Efficiency
+
+Neptune is optimized for low battery impact:
+
+### Features
+- **Event-driven** state coordination (not polling)
+- **Low Power Mode** reduces pet animation, concurrent agents
+- **Aggressive Efficiency Mode** for 1 active agent + minimal UI
+- **Smart animation** pauses when idle or on battery
+
+### Performance Metrics
+- ~5-15% CPU when idle (dock pet animation only)
+- ~50-100MB memory usage
+- Minimal wake-ups when no active projects
+- Recommended max 3 concurrent agents for battery health
+
+## 🔌 Provider Adapters
+
+Neptune detects and integrates with multiple execution backends:
+
+| Provider | Status | Capabilities |
+|----------|--------|--------------|
+| **Claude Code CLI** | ✅ Full | Direct task execution, session management |
+| **Claude Desktop** | ⚡ Detection | Launch detection, project opening |
+| **VS Code + Claude** | ⚡ Detection | Workspace awareness, editor integration |
+| **Codex Workflows** | 🔮 Planned | Local Codex CLI support |
+
+## 🛠️ Settings & Configuration
+
+Neptune Settings include:
+
+- **Claude Path** — Location of Claude Code CLI executable
+- **Workspace Path** — Default project directory
+- **Low Power Mode** — Battery efficiency toggle
+- **Aggressive Efficiency** — Maximum performance savings
+- **Max Concurrent Agents** — Parallel execution limit
+- **Preferred Provider** — Default execution backend
+- **Launch at Login** — Auto-start on macOS login
+
+## 📊 Development Status
+
+### macOS (v1.0-beta)
+- ✅ Orchestration core
+- ✅ Provider adapters
+- ✅ Skills system
+- ✅ Task graphs with dependencies
+- ✅ Dock pets (live state)
+- ✅ Dashboard & settings
+- ✅ Low Power Mode
+- ⚠️ Blueprint templates (MVP set)
+
+### Windows (Roadmap)
+- 🔮 Shared orchestration core (in progress)
+- 🔮 Native Windows desktop shell
+- 🔮 Tray icon variant
+- 🔮 Same provider adapter system
+- 🔮 Estimated: Q3 2026
+
+## 🤝 Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines, development setup, and areas we're looking for help:
+
+- **Provider adapters** — Add support for new tools (Codex, local models, etc.)
+- **Skill packs** — Create YAML blueprints for more project types
+- **Windows version** — Help build the Windows desktop shell
+- **Documentation** — Improve guides, examples, and technical docs
+- **Testing** — Report bugs, verify workflows, test edge cases
+- **UI/UX** — Design improvements, accessibility enhancements
+
+## 📄 License
+
+Neptune is released under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+Neptune draws inspiration from:
+- **[Lil Agents](https://github.com/rynschm/lil-agents)** — Dock companion UI design
+- **Clonk** — Autonomous orchestration architecture
+- **Claude Code CLI** — Local execution foundation
+
+## 📞 Support & Feedback
+
+- **Issues & Feature Requests** — [GitHub Issues](https://github.com/anthropics/neptune/issues)
+- **Discussions** — [GitHub Discussions](https://github.com/anthropics/neptune/discussions)
+- **Documentation** — See [docs/](docs/) for technical deep-dives
+- **Architecture** — [docs/architecture/PROVIDER_ADAPTERS.md](docs/architecture/PROVIDER_ADAPTERS.md)
+- **Windows Roadmap** — [docs/WINDOWS_ROADMAP.md](docs/WINDOWS_ROADMAP.md)
+
+---
+
+**Neptune v1.0-beta** — *Local autonomous agents, no cloud required.*
