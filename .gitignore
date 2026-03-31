@@ -1,0 +1,50 @@
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+build/
+DerivedData/
+.DS_Store
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.swiftpm
+
+# Local environment
+.env
+.env.local
+*.local
+
+# Runtime
+~/.neptune/
+.neptune/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build artifacts
+*.app
+*.dmg
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (for any Node-based tooling)
+node_modules/
+package-lock.json
+
+# Temporary
+*.tmp
+*.bak

@@ -1,0 +1,73 @@
+{
+  "updatedAt": "2026-03-30T02:41:00Z",
+  "agents": [
+    {
+      "id": "agent-1",
+      "name": "Planner",
+      "role": "planning",
+      "task": "Planning tasks",
+      "status": "thinking",
+      "elapsedSeconds": 320,
+      "lastLog": "Analyzing requirements",
+      "updatedAt": "2026-03-30T02:40:50Z",
+      "colorVariant": {
+        "primary": "8B5CF6",
+        "secondary": "6D28D9",
+        "accent": "A78BFA"
+      },
+      "anchorHint": "terminal",
+      "slotIndex": 0
+    },
+    {
+      "id": "agent-2",
+      "name": "Builder",
+      "role": "coding",
+      "task": "Building features",
+      "status": "coding",
+      "elapsedSeconds": 120,
+      "lastLog": "Implementing feature",
+      "updatedAt": "2026-03-30T02:40:42Z",
+      "colorVariant": {
+        "primary": "10B981",
+        "secondary": "059669",
+        "accent": "34D399"
+      },
+      "anchorHint": "browser",
+      "slotIndex": 1
+    },
+    {
+      "id": "agent-3",
+      "name": "Reviewer",
+      "role": "review",
+      "task": "Reviewing code",
+      "status": "idle",
+      "elapsedSeconds": 45,
+      "lastLog": "Waiting for changes",
+      "updatedAt": "2026-03-30T02:40:30Z",
+      "colorVariant": {
+        "primary": "3B82F6",
+        "secondary": "1D4ED8",
+        "accent": "60A5FA"
+      },
+      "anchorHint": "figma",
+      "slotIndex": 2
+    },
+    {
+      "id": "agent-4",
+      "name": "Shipper",
+      "role": "shipping",
+      "task": "Deploying",
+      "status": "idle",
+      "elapsedSeconds": 0,
+      "lastLog": "Ready to deploy",
+      "updatedAt": "2026-03-30T02:40:20Z",
+      "colorVariant": {
+        "primary": "EC4899",
+        "secondary": "DB2777",
+        "accent": "F472B6"
+      },
+      "anchorHint": "notes",
+      "slotIndex": 3
+    }
+  ]
+}
