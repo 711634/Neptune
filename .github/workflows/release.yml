@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  # Build macOS DMG
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        run: swift --version
+
+      - name: Install dependencies
+        run: |
+          brew install xcodegen create-dmg
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build macOS app
+        run: |
+          xcodebuild build \
+            -project Neptune.xcodeproj \
+            -scheme Neptune \
+            -configuration Release \
+            -derivedDataPath build
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist
+          create-dmg \
+            --volname "Neptune" \
+            --volicon "Neptune/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Neptune.app" 150 200 \
+            --hide-extension "Neptune.app" \
+            dist/Neptune.dmg \
+            build/Release/Neptune.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/Neptune.dmg
+          retention-days: 1
+
+  # Build Windows MSI
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install Node dependencies (Windows)
+        working-directory: ./windows
+        run: npm install
+
+      - name: Build Windows MSI
+        working-directory: ./windows
+        run: npm run tauri build
+
+      - name: Find and upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: windows/target/release/bundle/msi/*.msi
+          retention-days: 1
+
+  # Create GitHub Release with assets
+  create-release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/macos
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-msi
+          path: artifacts/windows
+
+      - name: Get release notes
+        id: release_notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          NOTES=$(grep -A 50 "^## \[$VERSION\]" CHANGELOG.md || echo "No changelog entry found. Check GitHub release.")
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/macos/Neptune.dmg
+            artifacts/windows/**/*.msi
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
