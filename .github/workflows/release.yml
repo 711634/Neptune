@@ -42,7 +42,7 @@ jobs:
             --icon "Neptune.app" 150 200 \
             --hide-extension "Neptune.app" \
             dist/Neptune.dmg \
-            build/Release/Neptune.app
+            build/Build/Products/Release/Neptune.app
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
