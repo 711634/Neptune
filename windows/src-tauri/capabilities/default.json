@@ -1,0 +1,31 @@
+{
+  "$schema": "../../../node_modules/@tauri-apps/cli/schema.json",
+  "version": 1,
+  "identifier": "main-capability",
+  "description": "Capability for Neptune application",
+  "windows": ["main"],
+  "permissions": [
+    "shell:allow-open",
+    "shell:allow-execute",
+    "fs:allow-read-dir",
+    "fs:allow-copy-file",
+    "fs:allow-create-dir",
+    "fs:allow-remove-dir",
+    "fs:allow-remove-file",
+    "fs:allow-rename-file",
+    "fs:allow-exists",
+    "fs:allow-metadata",
+    "fs:allow-read-text-file",
+    "fs:allow-read-binary-file",
+    "fs:allow-write-file",
+    "fs:allow-write-binary-file",
+    "path:default",
+    "os:allow-*",
+    "window:allow-minimize",
+    "window:allow-maximize",
+    "window:allow-hide",
+    "window:allow-show",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}
