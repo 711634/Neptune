@@ -111,7 +111,7 @@ struct MenuBarView: View {
             Divider()
                 .padding(.vertical, 4)
 
-            menuButton(icon: "power", title: "Quit Clonk") {
+            menuButton(icon: "power", title: "Quit Neptune") {
                 NSApp.terminate(nil)
             }
         }

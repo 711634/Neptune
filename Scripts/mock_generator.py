@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mock Agent State Generator for Clonk
+Mock Agent State Generator for Neptune
 
 This script continuously updates the agent state JSON file with mock data
 to simulate multiple AI coding agents working in real-time.
@@ -193,7 +193,7 @@ def write_state(state_file, state):
 def run_generator(interval=3.0, num_agents=4):
     """Main generator loop."""
     print("=" * 50)
-    print("Clonk Mock Agent Generator")
+    print("Neptune Mock Agent Generator")
     print("=" * 50)
     state_file = ensure_state_directory()
     print(f"Writing to: {state_file}")
@@ -229,7 +229,7 @@ def run_generator(interval=3.0, num_agents=4):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Clonk mock agent state generator")
+    parser = argparse.ArgumentParser(description="Neptune mock agent state generator")
     parser.add_argument(
         "--interval",
         "-i",

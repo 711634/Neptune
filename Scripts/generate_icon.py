@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Clonk app icon - pixel art coding pet on dark gradient background."""
+"""Generate Neptune app icon - pixel art coding pet on dark gradient background."""
 
 from PIL import Image, ImageDraw, ImageFilter
 import math
@@ -160,7 +160,7 @@ def create_icon(size):
 
 
 def main():
-    icon_dir = "/Users/misbah/Clonk/Clonk/Resources/Assets.xcassets/AppIcon.appiconset"
+    icon_dir = "/Users/misbah/Neptune/Neptune/Resources/Assets.xcassets/AppIcon.appiconset"
     sizes = [16, 32, 64, 128, 256, 512, 1024]
 
     images = {}

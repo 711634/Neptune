@@ -1,295 +1,340 @@
-# Neptune — Local Autonomous Agent Platform
+# 🧠 Neptune — Local Autonomous Agent Platform
 
-[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)]((https://github.com/your-org/neptune/releases))
-[![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-green)](https://www.apple.com/macos/)
-[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-blue)](https://swift.org)
-[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
+[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)](https://github.com/anthropics/neptune/releases)
+[![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-brightgreen)](https://www.apple.com/macos/)
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)](https://swift.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-Neptune is a **lightweight, battery-efficient autonomous agent platform** that brings real multi-agent orchestration to your Mac. It integrates with your existing Claude subscription and leverages local authentication—**no external APIs, no billing**.
+> **Local multi-agent orchestration for your Mac.** Neptune brings autonomous, Claude-powered agents to your desktop—no external APIs, no billing, no cloud required.
 
-## ✨ Key Highlights
+Launch agents that understand your code, break down complex goals into task graphs, and work autonomously while you watch animated companion pets reflect their progress in your dock.
 
-- **Real Multi-Agent Orchestration** — Task graphs, dependency tracking, autonomous workflows
-- **Dock-Native Companions** — Transparent Tamagotchi-style pets that reflect actual agent work
-- **No API Billing** — Uses Claude Code CLI (locally authenticated) as the execution backend
-- **Skills + Blueprints** — Auto-detect project type, load role-specific prompts
-- **Battery-Efficient** — Low Power Mode, event-driven coordination, minimal polling
-- **Provider Adapters** — Detect Claude Desktop, VS Code, future tools
-- **Cross-Platform Architecture** — Designed for macOS today, Windows coming soon
+---
+
+## ✨ What Makes Neptune Different
+
+| Feature | Neptune | Others |
+|---------|---------|--------|
+| **Multi-agent workflows** | Real task graphs with dependencies | Sequential or mock flows |
+| **No API costs** | Uses Claude Code CLI (local auth) | Cloud APIs with per-token billing |
+| **Autonomous loops** | Agents run without input; handle errors | Require human-in-the-loop approval |
+| **Live visual feedback** | Dock pets + Dashboard (real-time) | Dashboards only, no embedded UI |
+| **Battery-efficient** | Event-driven, Low Power Mode | Polling-based, battery drain |
+| **Local state** | File-based, survive crashes | Often ephemeral |
+| **Cross-platform ready** | Windows roadmap + architecture | macOS only |
+
+---
 
 ## 🚀 Quick Start
 
-### Installation
+### 1. Install
 
-1. Download `Neptune.dmg` from [Releases](https://github.com/anthropics/neptune/releases)
-2. Double-click `Neptune.dmg` to mount
-3. Drag `Neptune.app` to `/Applications`
-4. Unmount the disk image (eject from Finder)
-5. Launch Neptune from `/Applications/Neptune.app`
-6. On first launch, configure Claude Code CLI path in Settings (typically `/opt/homebrew/bin/claude`)
+1. Download [Neptune.dmg](https://github.com/anthropics/neptune/releases)
+2. Double-click to mount → Drag `Neptune.app` to `/Applications`
+3. Eject the disk image
+4. Launch Neptune from `/Applications/Neptune.app`
 
-### Create a Project
+### 2. Configure
+
+On first launch:
+- **Set Claude Path** → Typically `/opt/homebrew/bin/claude`
+- **Verify Claude** → Run `claude --version` in Terminal
+- **Create a project** → Click "New Project" in the Dashboard
+
+### 3. Start Autonomous Workflow
 
 ```
-1. Click "New Project" in Neptune Dashboard
-2. Enter project name, description, and goal
-3. Neptune auto-detects project type
-4. Skills and blueprints load automatically
-5. Click "Start" to begin autonomous workflows
+1. Enter project name, description, and goal
+2. Neptune auto-detects project type (React? Python? Rust? iOS?)
+3. Skill packs load automatically (Planner, Coder, Reviewer, Shipper)
+4. Click "Start" → Watch agents work in real-time
 ```
 
-### Supported Project Types
+**Supported project types:**
+- `web_app` — React, Vue, Next.js, SvelteKit
+- `python_cli` — Click, Typer, argparse-based CLIs
+- `macos_app` — SwiftUI applications
+- `ios_app` — iOS/iPadOS apps  
+- `rust_lib` — Rust crates and libraries
 
-- **web_app** — React, Vue, Next.js, SvelteKit
-- **python_cli** — Click, Typer, argparse-based CLIs
-- **macos_app** — SwiftUI applications
-- **ios_app** — iOS / iPadOS apps
-- **rust_lib** — Rust libraries and crates
+---
 
 ## 📋 Requirements
 
-- **macOS 13.0** or later
+- **macOS 13.0+** (Intel or Apple Silicon)
 - **Claude Code CLI** installed and authenticated
   ```bash
   which claude
   claude --version
   ```
-- **Active Claude Subscription** (Neptune leverages local authentication)
+- **Active Claude subscription** (Neptune uses local authentication via Claude Code)
 
-## 🏗️ Architecture Overview
-
-Neptune is built on a modular, local-first architecture:
-
-```
-┌─────────────────────────────────────────────────────┐
-│              Neptune macOS App                       │
-│  ┌──────────────┐  ┌──────────┐  ┌──────────────┐  │
-│  │  Dashboard   │  │ Dock Pets│  │  Settings    │  │
-│  │  (SwiftUI)   │  │  (Live)  │  │  (UI)        │  │
-│  └──────────────┘  └──────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────┘
-                        │
-        ┌───────────────┼───────────────┐
-        │               │               │
-    ┌───▼───┐   ┌──────▼──────┐   ┌───▼────────┐
-    │Orchest│   │ Persistence  │   │Provider    │
-    │rator  │   │(State Mgr)   │   │Adapters    │
-    └───┬───┘   └──────┬──────┘   └───┬────────┘
-        │               │               │
-        └───────────────┼───────────────┘
-                        │
-        ┌───────────────┴───────────────┐
-        │                               │
-    ┌───▼────────┐          ┌──────────▼───┐
-    │Process     │          │Skill         │
-    │Manager     │          │Registry      │
-    │(PTY/CLI)   │          │(YAML)        │
-    └────────────┘          └──────────────┘
-                        │
-        ┌───────────────┴──────────────────┐
-        │                                  │
-    ┌───▼──────────┐            ┌────────▼───────┐
-    │Claude Code   │            │Claude Desktop  │
-    │CLI           │            │VS Code + Claude│
-    │(Execution)   │            │Codex (future)  │
-    └──────────────┘            └────────────────┘
-```
-
-### Core Components
-
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **AgentOrchestrator** | Multi-agent lifecycle, task queue, autonomous loops | `Services/AgentOrchestrator.swift` |
-| **ProcessManager** | PTY sessions, Claude Code CLI execution | `Services/ProcessManager.swift` |
-| **StateManager** | File-based persistence (~/.neptune/) | `Services/StateManager.swift` |
-| **SkillRegistry** | Auto-detect project type, load role prompts | `Services/SkillRegistry.swift` |
-| **ProviderRegistry** | Adapter system for Claude, VS Code, etc. | `Services/ProviderAdapter.swift` |
-| **TaskGraph** | Dependency tracking, task scheduling | `Models/TaskGraph.swift` |
-| **ActivityMonitor** | Dock pet state from real agent work | `Services/ActivityMonitor.swift` |
+---
 
 ## 🎯 How It Works
 
-### Autonomous Workflow Example
+### Real-Time Multi-Agent Orchestration
+
+When you launch a workflow, Neptune:
+
+1. **Analyzes** your project (files, structure, language)
+2. **Generates** a task graph with dependencies
+3. **Assigns** tasks to specialized agents (Planner → Coder → Reviewer → Shipper)
+4. **Executes** autonomously — agents handle task assignment, retries, and error recovery
+5. **Persists** state to disk (survive crashes, resume workflows)
+6. **Visualizes** progress via dashboard + dock pets
 
 ```
-User Input: "Build a React dashboard"
-        │
-        ▼
-┌─────────────────────────┐
-│ ProjectContext Created  │  Type: web_app
-│ Skills Loaded           │  Planner, Coder, Reviewer skills
-└─────────────────────────┘
-        │
-        ▼
-┌─────────────────────────┐
-│ Task Graph Generated    │  5 tasks: plan → research → code → review → ship
-└─────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│ Agent 1: Planner                        │  Breaks down requirements
-│ Status: planning                        │  Generates architecture doc
-│ Output: architecture.md                 │  Next: Task for Coder
-└─────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│ Agent 2: Coder                          │  Implements components
-│ Status: coding                          │  Writes code files
-│ Output: src/components/...              │  Next: Task for Reviewer
-└─────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│ Agent 3: Reviewer                       │  Reviews code quality
-│ Status: reviewing                       │  Checks for issues
-│ Output: review-report.md                │  Next: Task for Shipper
-└─────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│ Agent 4: Shipper                        │  Packages, deploys
-│ Status: shipping                        │  Creates build artifacts
-│ Output: build/, deployment logs         │
-└─────────────────────────────────────────┘
-        │
-        ▼
-    PROJECT COMPLETE
+┌──────────────────────────────────────────────────┐
+│ User: "Build a React dashboard for metrics"     │
+└──────────────────────────────────────────────────┘
+               ▼
+┌──────────────────────────────────────────────────┐
+│ PLANNER (purple)                                 │
+│ ✓ Analyzes requirements                          │
+│ ✓ Creates architecture document                  │
+│ ✓ Defines 5 tasks for Coder                      │
+└──────────────────────────────────────────────────┘
+               ▼
+┌──────────────────────────────────────────────────┐
+│ CODER (green)                                    │
+│ ✓ Implements React components                    │
+│ ✓ Connects API endpoints                         │
+│ ✓ Writes test files                              │
+└──────────────────────────────────────────────────┘
+               ▼
+┌──────────────────────────────────────────────────┐
+│ REVIEWER (orange)                                │
+│ ✓ Checks code quality                            │
+│ ✓ Runs lints and tests                           │
+│ ✓ Suggests improvements                          │
+└──────────────────────────────────────────────────┘
+               ▼
+    📊 Dashboard + Dock Pet Show Live Progress
 ```
 
-Throughout this workflow:
-- **Dashboard** shows real-time task graph progress
-- **Dock pets** visually represent agent activity
-- **Logs** are captured for inspection
-- **State persists** to disk (survives crashes)
-- **Dependency rules** prevent out-of-order execution
+### Autonomous Task Execution
+
+Agents don't wait for permission. They:
+- ✅ Evaluate task dependencies (won't run until prerequisites complete)
+- ✅ Execute via Claude Code CLI (full language/framework support)
+- ✅ Detect success/failure automatically
+- ✅ Retry with backoff on recoverable errors
+- ✅ Report results and mark dependent tasks ready
+
+---
+
+## 🏗️ Architecture
+
+Neptune is built for local-first, multi-agent workflows:
+
+```
+┌─────────────────────────────────────────┐
+│         Neptune macOS App (SwiftUI)     │
+│   Dashboard │ Dock Pets │ Settings      │
+└─────────────┬───────────────────────────┘
+              │
+    ┌─────────┼─────────┐
+    │         │         │
+┌───▼──┐ ┌───▼──────┐ ┌─▼──────────┐
+│Agent │ │StateManager
+│Orch  │ │(Persists) │ │ProviderAPI │
+│      │ │          │ │(CLI/Desktop)│
+└───┬──┘ └──────┬────┘ └──────┬─────┘
+    │          │              │
+    └──────────┼──────────────┘
+               │
+     ┌─────────┴──────────┐
+     │                    │
+  ┌──▼────┐          ┌───▼───┐
+  │Skill  │          │Task   │
+  │Registry          │Graph  │
+  └────────┘         └───────┘
+     │
+     └──▶ Claude Code CLI (local execution)
+```
+
+**Key components:**
+- **AgentOrchestrator** — Manages agent lifecycle, task assignment, autonomous loops
+- **TaskGraph** — Tracks task dependencies, resolves circular refs, prevents out-of-order execution
+- **ProviderRegistry** — Abstracts execution (Claude Code CLI, Claude Desktop, VS Code)
+- **SkillRegistry** — Loads YAML prompts based on detected project type
+- **StateManager** — Persists everything to `~/.neptune/` (JSON files)
+
+All state is **local** and **persistent** — crash-safe by design.
+
+---
+
+## ⚡ Battery Efficiency
+
+Neptune is optimized for low power consumption:
+
+**Default mode:**
+- ~5–10% CPU when idle (pet animation only)
+- ~50–80MB memory
+- Event-driven state sync (no polling)
+
+**Low Power Mode:**
+- Reduces pet animations
+- Limits concurrent agents to 1
+- ~2–5% CPU when idle
+- Extends battery life on long workflows
+
+**Aggressive Efficiency Mode:**
+- Minimal UI updates
+- Pure daemon operation
+- Ideal for overnight builds
+
+---
+
+## 🔌 Provider Adapters
+
+Neptune auto-detects and integrates with multiple execution backends:
+
+| Provider | Status | Details |
+|----------|--------|---------|
+| **Claude Code CLI** | ✅ Active | Direct execution, full features, local auth |
+| **Claude Desktop** | 🔄 Planned | Detection + launch, direct exec coming Q2 2026 |
+| **VS Code + Claude** | 🔄 Planned | Workspace detection, editor integration |
+| **Future** | 🔮 Roadmap | Local models, custom providers |
+
+---
 
 ## 📁 Local State Structure
 
-Neptune stores everything locally under `~/.neptune/`:
+Everything lives in `~/.neptune/`:
 
 ```
 ~/.neptune/
 ├── projects/
 │   └── {projectId}/
-│       ├── project.json          # Project metadata
-│       ├── task-graph.json       # Task definitions & status
+│       ├── project.json          # Metadata
+│       ├── task-graph.json       # Tasks + status
 │       ├── agents/
 │       │   └── {agentId}/
-│       │       ├── state.json    # Agent metadata
-│       │       ├── transcript.log # Session output
-│       │       └── checkpoint.json# Resumption point
+│       │       ├── state.json
+│       │       ├── transcript.log
+│       │       └── checkpoint.json
 │       └── artifacts/            # Generated files
 ├── skills/
-│   ├── web_app/
-│   │   ├── frontend.yaml
-│   │   ├── backend.yaml
-│   │   └── deployment.yaml
-│   ├── python_cli/
-│   │   ├── core.yaml
-│   │   └── testing.yaml
-│   └── ...
-├── blueprints/                   # Project templates
-└── logs/
-    └── orchestrator.log          # Global activity log
+│   ├── web_app/frontend.yaml
+│   ├── python_cli/core.yaml
+│   └── macos_app/swiftui.yaml
+└── logs/orchestrator.log
 ```
 
-### Zero External Dependencies
+**Zero cloud required.** All state is local JSON, survives crashes, and can be inspected/edited manually.
 
-- ✅ Uses Claude Code CLI (already authenticated locally)
-- ✅ All state saved to disk in JSON format
-- ✅ No cloud backend required
-- ✅ No external API calls (except to Claude via local CLI)
-- ✅ No billing or account setup needed
+---
 
-## ⚡ Performance & Battery Efficiency
+## 🛠️ Configuration & Settings
 
-Neptune is optimized for low battery impact:
+Access settings from the menu bar or cmd+comma:
 
-### Features
-- **Event-driven** state coordination (not polling)
-- **Low Power Mode** reduces pet animation, concurrent agents
-- **Aggressive Efficiency Mode** for 1 active agent + minimal UI
-- **Smart animation** pauses when idle or on battery
-
-### Performance Metrics
-- ~5-15% CPU when idle (dock pet animation only)
-- ~50-100MB memory usage
-- Minimal wake-ups when no active projects
-- Recommended max 3 concurrent agents for battery health
-
-## 🔌 Provider Adapters
-
-Neptune detects and integrates with multiple execution backends:
-
-| Provider | Status | Capabilities |
-|----------|--------|--------------|
-| **Claude Code CLI** | ✅ Full | Direct task execution, session management |
-| **Claude Desktop** | ⚡ Detection | Launch detection, project opening |
-| **VS Code + Claude** | ⚡ Detection | Workspace awareness, editor integration |
-| **Codex Workflows** | 🔮 Planned | Local Codex CLI support |
-
-## 🛠️ Settings & Configuration
-
-Neptune Settings include:
-
-- **Claude Path** — Location of Claude Code CLI executable
-- **Workspace Path** — Default project directory
+- **Claude CLI Path** — Location of `claude` executable
+- **Workspace** — Default project directory
+- **Launch at Login** — Auto-start on boot
 - **Low Power Mode** — Battery efficiency toggle
-- **Aggressive Efficiency** — Maximum performance savings
 - **Max Concurrent Agents** — Parallel execution limit
-- **Preferred Provider** — Default execution backend
-- **Launch at Login** — Auto-start on macOS login
+- **Preferred Provider** — Default backend (Claude Code, Claude Desktop, etc.)
+
+---
 
 ## 📊 Development Status
 
-### macOS (v1.0-beta)
-- ✅ Orchestration core
-- ✅ Provider adapters
-- ✅ Skills system
+### ✅ macOS v1.0-beta (Ready)
+- ✅ Multi-agent orchestration core
 - ✅ Task graphs with dependencies
-- ✅ Dock pets (live state)
-- ✅ Dashboard & settings
-- ✅ Low Power Mode
-- ⚠️ Blueprint templates (MVP set)
+- ✅ Provider adapter system
+- ✅ Skill registry (YAML-based)
+- ✅ Dashboard & live visualization
+- ✅ Dock pet companions (real-time state)
+- ✅ Settings & low-power modes
+- ✅ File-based state persistence
+- ⚠️ Blueprint templates (MVP set; expand as needed)
 
-### Windows (Roadmap)
-- 🔮 Shared orchestration core (in progress)
-- 🔮 Native Windows desktop shell
-- 🔮 Tray icon variant
-- 🔮 Same provider adapter system
-- 🔮 Estimated: Q3 2026
+### 🔄 Windows (Multi-Phase Roadmap)
+
+**Phase 1: Core Extraction (Q2 2026)**
+- Extract orchestration to Rust library
+- Define portable state format
+- Create C# FFI bindings
+
+**Phase 2: Windows Shell (Q3 2026)**
+- WPF or MAUI desktop UI
+- Tray icon integration (vs. dock pets)
+- Same provider adapter system
+
+**Phase 3: Windows Integration (Q3 2026)**
+- Claude Code CLI detection
+- VS Code integration
+- Windows-specific features
+
+**Phase 4: Testing & Hardening (Q4 2026)**
+- E2E testing
+- Performance tuning
+- Release candidate
+
+**Current Status:** Roadmap documented, implementation begins Q2 2026.
+
+---
+
+## 🐛 Known Limitations
+
+- **Windows** — Not yet available (see roadmap above)
+- **Blueprint system** — Currently MVP (expand as needed)
+- **Offline mode** — Requires Claude Code CLI (not bundled)
+- **Custom agents** — YAML-based skills only (code-based agents in future)
+- **Mobile** — macOS/Windows only (no iOS/Android clients)
+
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines, development setup, and areas we're looking for help:
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- **Provider adapters** — Add support for new tools (Codex, local models, etc.)
-- **Skill packs** — Create YAML blueprints for more project types
-- **Windows version** — Help build the Windows desktop shell
-- **Documentation** — Improve guides, examples, and technical docs
-- **Testing** — Report bugs, verify workflows, test edge cases
-- **UI/UX** — Design improvements, accessibility enhancements
+**Help us with:**
+- 🔌 **New provider adapters** — Claude 3 Opus, local models, Codex
+- 📦 **Skill packs** — YAML templates for new project types
+- 🪟 **Windows version** — Help build the Windows desktop shell
+- 📚 **Documentation** — Guides, examples, troubleshooting
+- 🧪 **Testing** — Report bugs, verify edge cases
+- 🎨 **UI/UX** — Design improvements, accessibility
+
+---
 
 ## 📄 License
 
 Neptune is released under the [MIT License](LICENSE).
 
-## 🙏 Acknowledgments
-
-Neptune draws inspiration from:
-- **[Lil Agents](https://github.com/rynschm/lil-agents)** — Dock companion UI design
-- **Clonk** — Autonomous orchestration architecture
-- **Claude Code CLI** — Local execution foundation
-
-## 📞 Support & Feedback
-
-- **Issues & Feature Requests** — [GitHub Issues](https://github.com/anthropics/neptune/issues)
-- **Discussions** — [GitHub Discussions](https://github.com/anthropics/neptune/discussions)
-- **Documentation** — See [docs/](docs/) for technical deep-dives
-- **Architecture** — [docs/architecture/PROVIDER_ADAPTERS.md](docs/architecture/PROVIDER_ADAPTERS.md)
-- **Windows Roadmap** — [docs/WINDOWS_ROADMAP.md](docs/WINDOWS_ROADMAP.md)
+See [LICENSE](LICENSE) for full terms.
 
 ---
 
-**Neptune v1.0-beta** — *Local autonomous agents, no cloud required.*
+## 🙏 Acknowledgments
+
+Neptune is built on:
+- **[Lil Agents](https://github.com/rynschm/lil-agents)** — Dock companion UI design inspiration
+- **Claude Code CLI** — Local execution foundation and authentication
+- **SwiftUI** — Native macOS app framework
+- Open-source community — Various libraries and patterns
+
+---
+
+## 📞 Support
+
+- **Issues & Features** — [GitHub Issues](https://github.com/anthropics/neptune/issues)
+- **Discussions** — [GitHub Discussions](https://github.com/anthropics/neptune/discussions)
+- **Documentation** — [docs/](docs/) — Technical deep-dives, architecture, roadmap
+- **Architecture** — [docs/architecture/](docs/architecture/) — Provider adapters, task graphs, state design
+- **Windows Roadmap** — [docs/WINDOWS_ROADMAP.md](docs/WINDOWS_ROADMAP.md) — Multi-phase plan
+
+---
+
+<div align="center">
+
+**Neptune v1.0-beta** — *Local autonomous agents, no cloud required*
+
+🌊 *"Neptune: Where agents flow like water, not electricity."*
+
+</div>
