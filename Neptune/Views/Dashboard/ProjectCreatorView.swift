@@ -64,7 +64,7 @@ struct ProjectCreatorView: View {
         errorMessage = nil
         isCreating = true
 
-        Task { @MainActor in
+        _Concurrency.Task(priority: .userInitiated) { @MainActor in
             do {
                 let projectType = ProjectType.unknown
 
