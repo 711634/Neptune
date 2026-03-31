@@ -100,8 +100,8 @@ struct TaskGraphItemView: View {
     )
 
     var graph = TaskGraph()
-    try? graph.addTask(task1)
-    try? graph.addTask(task2)
+    _ = try? graph.addTask(task1)
+    _ = try? graph.addTask(task2)
 
-    TaskGraphView(taskGraph: graph, onTaskSelected: nil)
+    TaskGraphView(taskGraph: graph, onTaskSelected: { _ in })
 }

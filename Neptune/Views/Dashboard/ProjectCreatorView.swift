@@ -64,7 +64,7 @@ struct ProjectCreatorView: View {
         errorMessage = nil
         isCreating = true
 
-        Concurrency.Task(priority: .userInitiated) {
+        Task(priority: .userInitiated) {
             do {
                 // This is a placeholder - in full implementation, would call orchestrator
                 let projectType = ProjectType.unknown
