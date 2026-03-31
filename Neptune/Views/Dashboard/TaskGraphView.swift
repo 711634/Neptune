@@ -84,24 +84,5 @@ struct TaskGraphItemView: View {
 }
 
 #Preview {
-    let task1 = Task(
-        id: "task-1",
-        description: "Plan project architecture",
-        roleRequired: .planning,
-        prompt: "Create a detailed plan"
-    )
-
-    let task2 = Task(
-        id: "task-2",
-        description: "Implement features",
-        roleRequired: .coding,
-        prompt: "Write code",
-        dependencies: ["task-1"]
-    )
-
-    var graph = TaskGraph()
-    _ = try? graph.addTask(task1)
-    _ = try? graph.addTask(task2)
-
-    TaskGraphView(taskGraph: graph, onTaskSelected: { _ in })
+    TaskGraphView(taskGraph: TaskGraph(), onTaskSelected: { _ in })
 }

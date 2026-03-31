@@ -64,9 +64,8 @@ struct ProjectCreatorView: View {
         errorMessage = nil
         isCreating = true
 
-        Task(priority: .userInitiated) {
+        Task { @MainActor in
             do {
-                // This is a placeholder - in full implementation, would call orchestrator
                 let projectType = ProjectType.unknown
 
                 let workspaceDir = URL(fileURLWithPath: NSHomeDirectory())
@@ -84,15 +83,11 @@ struct ProjectCreatorView: View {
                     workspaceDir: workspaceDir
                 )
 
-                DispatchQueue.main.async {
-                    isCreating = false
-                    onProjectCreated?(project)
-                }
+                isCreating = false
+                onProjectCreated?(project)
             } catch {
-                DispatchQueue.main.async {
-                    errorMessage = error.localizedDescription
-                    isCreating = false
-                }
+                errorMessage = error.localizedDescription
+                isCreating = false
             }
         }
     }
