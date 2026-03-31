@@ -16,7 +16,6 @@ DerivedData/
 *.local
 
 # Runtime
-~/.neptune/
 .neptune/
 
 # IDE
