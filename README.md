@@ -311,14 +311,6 @@ See [LICENSE](LICENSE) for full terms.
 
 ---
 
-## 🙏 Acknowledgments
-
-Neptune is built on:
-- **[Lil Agents](https://github.com/rynschm/lil-agents)** — Dock companion UI design inspiration
-- **Claude Code CLI** — Local execution foundation and authentication
-- **SwiftUI** — Native macOS app framework
-- Open-source community — Various libraries and patterns
-
 ---
 
 ## 📞 Support
