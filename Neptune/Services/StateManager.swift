@@ -1,6 +1,45 @@
 import Foundation
 import Combine
 
+// Permission decision audit log
+struct PermissionDecision: Codable, Sendable {
+    let toolName: String
+    let decision: String  // "allow", "deny", "ask"
+    let reason: String?   // e.g., "user_prompt", "policy_rule", "hook_handler"
+    let timestamp: Date
+    let agentId: String
+    let projectId: String
+}
+
+// Session checkpoint for resumability
+struct SessionCheckpoint: Codable {
+    let projectId: String
+    let timestamp: Date
+    let completedTaskIds: [String]
+    let totalTokensUsed: Int
+    let totalCostUSD: Double
+    let agents: [Agent]
+    let taskGraph: TaskGraph
+
+    init(
+        projectId: String,
+        agents: [String: Agent],
+        taskGraph: TaskGraph,
+        totalTokensUsed: Int = 0,
+        totalCostUSD: Double = 0
+    ) {
+        self.projectId = projectId
+        self.timestamp = Date()
+        self.completedTaskIds = taskGraph.tasks.values
+            .filter { $0.status == .completed }
+            .map { $0.id }
+        self.totalTokensUsed = totalTokensUsed
+        self.totalCostUSD = totalCostUSD
+        self.agents = Array(agents.values)
+        self.taskGraph = taskGraph
+    }
+}
+
 actor StateManager {
     private let projectsDir: URL
     private var fileWatcher: DispatchSourceFileSystemObject?
@@ -203,6 +242,148 @@ actor StateManager {
 
         let data = try jsonEncoder.encode(artifacts)
         try data.write(to: manifestFile)
+    }
+
+    // MARK: - Session Checkpoint (for resumability)
+
+    func saveSessionCheckpoint(
+        projectId: String,
+        agents: [String: Agent],
+        taskGraph: TaskGraph,
+        totalTokensUsed: Int = 0,
+        totalCostUSD: Double = 0
+    ) async throws {
+        let checkpoint = SessionCheckpoint(
+            projectId: projectId,
+            agents: agents,
+            taskGraph: taskGraph,
+            totalTokensUsed: totalTokensUsed,
+            totalCostUSD: totalCostUSD
+        )
+
+        let checkpointFile = projectsDir
+            .appendingPathComponent(projectId)
+            .appendingPathComponent("session-checkpoint.json")
+
+        let data = try jsonEncoder.encode(checkpoint)
+        try data.write(to: checkpointFile)
+    }
+
+    func loadSessionCheckpoint(projectId: String) async throws -> SessionCheckpoint? {
+        let checkpointFile = projectsDir
+            .appendingPathComponent(projectId)
+            .appendingPathComponent("session-checkpoint.json")
+
+        guard FileManager.default.fileExists(atPath: checkpointFile.path) else {
+            return nil
+        }
+
+        let data = try Data(contentsOf: checkpointFile)
+        return try jsonDecoder.decode(SessionCheckpoint.self, from: data)
+    }
+
+    // MARK: - Permission Decision Tracking
+
+    func logPermissionDecision(
+        toolName: String,
+        decision: String,
+        reason: String?,
+        agentId: String,
+        projectId: String
+    ) async throws {
+        let decisionRecord = PermissionDecision(
+            toolName: toolName,
+            decision: decision,
+            reason: reason,
+            timestamp: Date(),
+            agentId: agentId,
+            projectId: projectId
+        )
+
+        let decisionFile = projectsDir
+            .appendingPathComponent(projectId)
+            .appendingPathComponent("permissions")
+            .appendingPathComponent("decisions.jsonl")
+
+        // Ensure directory exists
+        try FileManager.default.createDirectory(
+            at: decisionFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        // Append as JSONL (one JSON object per line)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(decisionRecord)
+        let jsonLine = String(data: data, encoding: .utf8) ?? ""
+
+        if FileManager.default.fileExists(atPath: decisionFile.path) {
+            if let fileHandle = FileHandle(forWritingAtPath: decisionFile.path) {
+                defer { try? fileHandle.close() }
+                fileHandle.seekToEndOfFile()
+                if let lineData = (jsonLine + "\n").data(using: .utf8) {
+                    fileHandle.write(lineData)
+                }
+            }
+        } else {
+            try (jsonLine + "\n").write(to: decisionFile, atomically: true, encoding: .utf8)
+        }
+    }
+
+    func getPermissionDecisions(agentId: String, projectId: String) async throws -> [PermissionDecision] {
+        let decisionFile = projectsDir
+            .appendingPathComponent(projectId)
+            .appendingPathComponent("permissions")
+            .appendingPathComponent("decisions.jsonl")
+
+        guard FileManager.default.fileExists(atPath: decisionFile.path) else {
+            return []
+        }
+
+        let content = try String(contentsOf: decisionFile, encoding: .utf8)
+        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        var decisions: [PermissionDecision] = []
+        for line in lines {
+            if let data = line.data(using: .utf8),
+               let decision = try? decoder.decode(PermissionDecision.self, from: data) {
+                if decision.agentId == agentId {
+                    decisions.append(decision)
+                }
+            }
+        }
+
+        return decisions.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    func getPermissionDecisions(projectId: String) async throws -> [PermissionDecision] {
+        let decisionFile = projectsDir
+            .appendingPathComponent(projectId)
+            .appendingPathComponent("permissions")
+            .appendingPathComponent("decisions.jsonl")
+
+        guard FileManager.default.fileExists(atPath: decisionFile.path) else {
+            return []
+        }
+
+        let content = try String(contentsOf: decisionFile, encoding: .utf8)
+        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        var decisions: [PermissionDecision] = []
+        for line in lines {
+            if let data = line.data(using: .utf8),
+               let decision = try? decoder.decode(PermissionDecision.self, from: data) {
+                decisions.append(decision)
+            }
+        }
+
+        return decisions.sorted { $0.timestamp < $1.timestamp }
     }
 
     // MARK: - Directory Access
