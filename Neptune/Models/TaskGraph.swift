@@ -10,24 +10,60 @@ struct RetryPolicy: Codable, Equatable, Sendable {
     let initialBackoffMs: Int
     let maxBackoffMs: Int
     let backoffMultiplier: Double
+    let jitterFraction: Double  // 0.0-1.0 for random jitter
     var attempts: [RetryAttempt] = []
 
     init(
         maxAttempts: Int = 3,
         initialBackoffMs: Int = 100,
         maxBackoffMs: Int = 30_000,
-        backoffMultiplier: Double = 2.0
+        backoffMultiplier: Double = 2.0,
+        jitterFraction: Double = 0.2
     ) {
         self.maxAttempts = maxAttempts
         self.initialBackoffMs = initialBackoffMs
         self.maxBackoffMs = maxBackoffMs
         self.backoffMultiplier = backoffMultiplier
+        self.jitterFraction = jitterFraction
     }
+
+    /// Default policy: 3 attempts, exponential backoff 100ms→30s, 20% jitter
+    static let `default` = RetryPolicy()
+
+    /// Aggressive policy: more retries for transient failures
+    static let aggressive = RetryPolicy(
+        maxAttempts: 5,
+        initialBackoffMs: 50,
+        maxBackoffMs: 30_000,
+        backoffMultiplier: 1.5,
+        jitterFraction: 0.1
+    )
+
+    /// Conservative policy: fewer retries, fail fast
+    static let conservative = RetryPolicy(
+        maxAttempts: 2,
+        initialBackoffMs: 200,
+        maxBackoffMs: 5000,
+        backoffMultiplier: 3.0,
+        jitterFraction: 0.3
+    )
 
     func nextBackoffDuration(for attemptIndex: Int) -> TimeInterval {
         let exponentialMs = Double(initialBackoffMs) * pow(backoffMultiplier, Double(attemptIndex))
         let cappedMs = min(exponentialMs, Double(maxBackoffMs))
         return cappedMs / 1000.0  // Convert to seconds
+    }
+
+    /// Calculates backoff delay in milliseconds with jitter for given attempt number
+    func backoffForAttempt(_ attempt: Int) -> Int {
+        let exponentialBackoff = Int(Double(initialBackoffMs) * pow(backoffMultiplier, Double(attempt)))
+        let capped = min(exponentialBackoff, maxBackoffMs)
+
+        // Add jitter
+        let jitterAmount = Int(Double(capped) * jitterFraction)
+        let randomJitter = Int.random(in: -jitterAmount...jitterAmount)
+
+        return max(0, capped + randomJitter)
     }
 }
 
