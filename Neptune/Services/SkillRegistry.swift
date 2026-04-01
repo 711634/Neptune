@@ -147,8 +147,8 @@ extension SkillRegistry {
     // For now, we use hardcoded example skills loaded above
 
     func loadSkillFromYAML(_ path: URL) throws -> Skill? {
-        // TODO: Implement YAML parsing
-        // For production, use a YAML library like YAMLEncoder
+        // Planned enhancement: Direct YAML parsing
+        // v1.1.0 uses hardcoded skills; future versions will load from YAML via YAMLEncoder
         return nil
     }
 
