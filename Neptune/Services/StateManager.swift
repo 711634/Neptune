@@ -1,14 +1,28 @@
 import Foundation
 import Combine
 
-// Permission decision audit log
+// OTel-compliant permission decision source
+enum PermissionSource: String, Codable, Sendable {
+    case userTemporary = "user_temporary"  // Session-scoped allow
+    case userPermanent = "user_permanent"  // On-disk allow
+    case userReject = "user_reject"        // User deny (session or permanent)
+    case config                            // Config, policy, or rule-based
+    case hook                              // Pre/post-tool hook decision
+    case classifier                        // Security classifier (e.g., bash)
+    case other                             // Other sources
+}
+
+// Permission decision with source and classification
 struct PermissionDecision: Codable, Sendable {
     let toolName: String
     let decision: String  // "allow", "deny", "ask"
-    let reason: String?   // e.g., "user_prompt", "policy_rule", "hook_handler"
+    let source: PermissionSource  // Where the decision came from
+    let reasonType: String?  // "rule", "hook", "classifier", "userPrompt", etc.
+    let reason: String?  // Details about why the decision was made
     let timestamp: Date
     let agentId: String
     let projectId: String
+    let metadata: [String: String]?  // Extensible metadata (segments, affected paths, etc.)
 }
 
 // Session checkpoint for resumability
@@ -287,17 +301,23 @@ actor StateManager {
     func logPermissionDecision(
         toolName: String,
         decision: String,
-        reason: String?,
+        source: PermissionSource,
+        reasonType: String? = nil,
+        reason: String? = nil,
         agentId: String,
-        projectId: String
+        projectId: String,
+        metadata: [String: String]? = nil
     ) async throws {
         let decisionRecord = PermissionDecision(
             toolName: toolName,
             decision: decision,
+            source: source,
+            reasonType: reasonType,
             reason: reason,
             timestamp: Date(),
             agentId: agentId,
-            projectId: projectId
+            projectId: projectId,
+            metadata: metadata
         )
 
         let decisionFile = projectsDir

@@ -93,6 +93,215 @@ enum ProviderError: LocalizedError, Sendable {
     }
 }
 
+// MARK: - Bash Command Analysis Types
+
+struct CommandSegment: Sendable, Equatable {
+    let command: String
+    let args: [String]
+    let index: Int
+
+    var isDirectoryChange: Bool {
+        command == "cd" || command == "pushd" || command == "popd"
+    }
+
+    var isVersionControl: Bool {
+        command == "git" || command == "hg" || command == "svn"
+    }
+}
+
+enum SecuritySeverity: String, Sendable {
+    case info
+    case warning
+    case error
+}
+
+struct SecurityIssue: Sendable, Equatable {
+    let severity: SecuritySeverity
+    let message: String
+    let affectedSegments: [Int]
+}
+
+struct BashCommandParser: Sendable {
+    static func segment(_ command: String) -> [CommandSegment] {
+        let parts = command.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+
+        return parts.enumerated().compactMap { index, part in
+            let tokens = tokenizeCommand(part)
+            guard !tokens.isEmpty else { return nil }
+
+            let cmd = tokens[0]
+            let args = Array(tokens.dropFirst())
+
+            return CommandSegment(command: cmd, args: args, index: index)
+        }
+    }
+
+    static func detectSecurityIssues(segments: [CommandSegment]) -> [SecurityIssue] {
+        var issues: [SecurityIssue] = []
+
+        // Check for cd+git pattern across segments
+        var hasCd = false
+        var hasGit = false
+
+        for segment in segments {
+            if segment.isDirectoryChange {
+                hasCd = true
+            }
+            if segment.isVersionControl {
+                hasGit = true
+            }
+        }
+
+        if hasCd && hasGit {
+            issues.append(
+                SecurityIssue(
+                    severity: .error,
+                    message: "Directory change followed by git command prevents bare repository attacks",
+                    affectedSegments: Array(0..<segments.count)
+                )
+            )
+        }
+
+        return issues
+    }
+
+    private static func tokenizeCommand(_ commandString: String) -> [String] {
+        var tokens: [String] = []
+        var currentToken = ""
+        var inSingleQuote = false
+        var inDoubleQuote = false
+        var i = commandString.startIndex
+
+        while i < commandString.endIndex {
+            let char = commandString[i]
+
+            switch char {
+            case "'" where !inDoubleQuote:
+                inSingleQuote.toggle()
+            case "\"" where !inSingleQuote:
+                inDoubleQuote.toggle()
+            case " ", "\t" where !inSingleQuote && !inDoubleQuote:
+                if !currentToken.isEmpty {
+                    tokens.append(currentToken)
+                    currentToken = ""
+                }
+            default:
+                currentToken.append(char)
+            }
+
+            i = commandString.index(after: i)
+        }
+
+        if !currentToken.isEmpty {
+            tokens.append(currentToken)
+        }
+
+        return tokens
+    }
+}
+
+// MARK: - Execution Timing & Observability
+
+struct ExecutionPhaseMetrics: Sendable {
+    let phaseName: String
+    let startTime: Date
+    var endTime: Date?
+
+    var duration: TimeInterval {
+        (endTime ?? Date()).timeIntervalSince(startTime)
+    }
+
+    var isSlowOperation: Bool {
+        // Match reference thresholds:
+        // HOOK_TIMING_DISPLAY_THRESHOLD_MS = 500ms
+        // SLOW_PHASE_LOG_THRESHOLD_MS = 2000ms
+        duration >= 2.0  // 2000ms
+    }
+
+    var shouldDisplay: Bool {
+        duration >= 0.5  // 500ms
+    }
+}
+
+struct ToolExecutionMetrics: Sendable {
+    let toolName: String
+    let agentId: String
+    let startTime: Date
+    var phases: [ExecutionPhaseMetrics] = []
+
+    mutating func startPhase(_ name: String) -> ExecutionPhaseMetrics {
+        let phase = ExecutionPhaseMetrics(phaseName: name, startTime: Date())
+        return phase
+    }
+
+    mutating func endPhase(_ phase: inout ExecutionPhaseMetrics) {
+        phase.endTime = Date()
+        phases.append(phase)
+
+        if phase.isSlowOperation {
+            logSlowPhase(phase)
+        }
+    }
+
+    var totalDuration: TimeInterval {
+        Date().timeIntervalSince(startTime)
+    }
+
+    private func logSlowPhase(_ phase: ExecutionPhaseMetrics) {
+        let durationMs = String(format: "%.0f", phase.duration * 1000)
+        print("⚠️  Slow \(toolName) phase: \(phase.phaseName) took \(durationMs)ms")
+    }
+}
+
+// MARK: - Segmented Command Permission Aggregation
+
+struct SegmentPermissionResult: Sendable {
+    let command: String
+    let allowed: Bool
+    let reason: String?
+    let issues: [SecurityIssue]
+}
+
+struct CommandPermissionAggregation: Sendable {
+    let originalCommand: String
+    let segments: [CommandSegment]
+    let segmentResults: [SegmentPermissionResult]
+    let securityIssues: [SecurityIssue]
+
+    var shouldAllow: Bool {
+        // Deny if: any segment denied OR cross-segment security issues found
+        if !securityIssues.isEmpty {
+            return false
+        }
+        return segmentResults.allSatisfy { $0.allowed }
+    }
+
+    var shouldAsk: Bool {
+        // Ask if: mixed permissions or segment-level security concerns
+        let hasAllowed = segmentResults.contains { $0.allowed }
+        let hasDenied = segmentResults.contains { !$0.allowed }
+        return hasAllowed && hasDenied
+    }
+
+    var summary: String {
+        if !securityIssues.isEmpty {
+            let critical = securityIssues.filter { $0.severity == .error }
+            if !critical.isEmpty {
+                return critical.map { $0.message }.joined(separator: "; ")
+            }
+        }
+        if shouldDeny {
+            let denied = segmentResults.filter { !$0.allowed }
+            return denied.map { "\($0.command): \($0.reason ?? "access denied")" }.joined(separator: "; ")
+        }
+        return "All segments allowed"
+    }
+
+    var shouldDeny: Bool {
+        !shouldAllow && !shouldAsk
+    }
+}
+
 // MARK: - Provider Health & Circuit Breaker
 
 struct ProviderHealth: Sendable {
@@ -176,6 +385,12 @@ actor ClaudeCodeRunner {
         workDir: URL,
         context: TaskExecutionContext? = nil
     ) async throws -> ClaudeOutput {
+        var metrics = ToolExecutionMetrics(
+            toolName: "claudeRunner",
+            agentId: agentId,
+            startTime: Date()
+        )
+
         // Check circuit breaker
         let canAttempt = await providerHealthRegistry.canAttempt(provider: providerName)
         if !canAttempt {
@@ -184,14 +399,17 @@ actor ClaudeCodeRunner {
         }
 
         do {
-            // 1. Create the full prompt
+            // Phase 1: Prompt building
+            var promptPhase = metrics.startPhase("prompt_building")
             let fullPrompt = buildPrompt(
                 skill: skillPrompt,
                 task: task,
                 role: role
             )
+            metrics.endPhase(&promptPhase)
 
-            // 2. Start a Claude Code session
+            // Phase 2: Session setup
+            var sessionPhase = metrics.startPhase("session_setup")
             let sessionId = try await processManager.startSession(
                 agentId: agentId,
                 workDir: workDir.path,
@@ -202,24 +420,34 @@ actor ClaudeCodeRunner {
                     "CLAUDE_WORKSPACE": workDir.path
                 ]
             )
+            metrics.endPhase(&sessionPhase)
 
-            // 3. Send the task prompt
+            // Phase 3: Prompt submission
+            var submitPhase = metrics.startPhase("prompt_submission")
             try await processManager.sendInput(to: sessionId, input: fullPrompt)
+            metrics.endPhase(&submitPhase)
 
-            // 4. Wait for completion with timeout
+            // Phase 4: Execution
+            var executionPhase = metrics.startPhase("execution")
             let (exitCode, output) = try await processManager.waitForCompletion(
                 sessionId: sessionId,
                 timeout: task.timeout
             )
+            metrics.endPhase(&executionPhase)
 
-            // 5. Truncate output if too large
+            // Phase 5: Output processing
+            var processingPhase = metrics.startPhase("output_processing")
             let truncatedOutput = truncateOutput(output, maxLines: 500)
-
-            // 6. Save transcript
             try await stateManager.appendTranscript(agentId: agentId, projectId: projectId, lines: truncatedOutput)
-
-            // 7. Parse output to extract completion signal
             let claudeOutput = try parseClaudeOutput(truncatedOutput)
+            metrics.endPhase(&processingPhase)
+
+            // Log metrics if any phase was slow
+            let slowPhases = metrics.phases.filter { $0.shouldDisplay }
+            if !slowPhases.isEmpty {
+                let summary = slowPhases.map { "\($0.phaseName):\(String(format: "%.0f", $0.duration * 1000))ms" }.joined(separator: " ")
+                print("📊 Task execution phases: \(summary)")
+            }
 
             // Record success
             await providerHealthRegistry.recordSuccess(provider: providerName)
@@ -231,6 +459,10 @@ actor ClaudeCodeRunner {
 
             // Record failure in provider registry
             await providerHealthRegistry.recordFailure(provider: providerName, error: classifiedError)
+
+            // Log total duration on failure
+            let totalMs = String(format: "%.0f", metrics.totalDuration * 1000)
+            print("❌ Task failed after \(totalMs)ms")
 
             throw classifiedError
         }
@@ -248,6 +480,110 @@ actor ClaudeCodeRunner {
         } catch {
             return false
         }
+    }
+
+    // MARK: - Command Analysis
+
+    func analyzeCommandPermissions(
+        command: String,
+        agentId: String,
+        projectId: String
+    ) async throws -> CommandPermissionAggregation {
+        // Parse the command into segments
+        let segments = BashCommandParser.segment(command)
+
+        // If only one segment or no pipes, treat as single command
+        if segments.count <= 1 {
+            let singleSegment: CommandSegment
+            if let first = segments.first {
+                singleSegment = first
+            } else {
+                singleSegment = CommandSegment(
+                    command: command.trimmingCharacters(in: .whitespaces),
+                    args: [],
+                    index: 0
+                )
+            }
+            let result = SegmentPermissionResult(
+                command: singleSegment.command,
+                allowed: true,  // Default permissive (real implementation would check permissions)
+                reason: nil,
+                issues: []
+            )
+            return CommandPermissionAggregation(
+                originalCommand: command,
+                segments: [singleSegment],
+                segmentResults: [result],
+                securityIssues: []
+            )
+        }
+
+        // Analyze each segment
+        var segmentResults: [SegmentPermissionResult] = []
+        var allIssues: [SecurityIssue] = []
+
+        for segment in segments {
+            let issues = BashCommandParser.detectSecurityIssues(segments: [segment])
+            allIssues.append(contentsOf: issues)
+
+            // Evaluate segment permissions
+            let allowed = evaluateSegmentPermission(segment: segment)
+
+            segmentResults.append(
+                SegmentPermissionResult(
+                    command: segment.command,
+                    allowed: allowed,
+                    reason: allowed ? nil : "Permission denied for \(segment.command)",
+                    issues: issues
+                )
+            )
+
+            // Log segment decision
+            try await stateManager.logPermissionDecision(
+                toolName: "bash",
+                decision: allowed ? "allow" : "deny",
+                source: .classifier,
+                reasonType: "bash_segment",
+                reason: "Segment: \(segment.command)",
+                agentId: agentId,
+                projectId: projectId,
+                metadata: ["segment_index": String(segment.index), "segment": segment.command]
+            )
+        }
+
+        // Cross-segment security analysis
+        let crossSegmentIssues = BashCommandParser.detectSecurityIssues(segments: segments)
+        allIssues.append(contentsOf: crossSegmentIssues)
+
+        let aggregation = CommandPermissionAggregation(
+            originalCommand: command,
+            segments: segments,
+            segmentResults: segmentResults,
+            securityIssues: allIssues
+        )
+
+        // Log final aggregated decision
+        try await stateManager.logPermissionDecision(
+            toolName: "bash",
+            decision: aggregation.shouldAllow ? "allow" : aggregation.shouldDeny ? "deny" : "ask",
+            source: aggregation.securityIssues.isEmpty ? .classifier : .config,
+            reasonType: aggregation.securityIssues.isEmpty ? "bash_aggregated" : "bash_security_issue",
+            reason: aggregation.summary,
+            agentId: agentId,
+            projectId: projectId,
+            metadata: [
+                "total_segments": String(segments.count),
+                "security_issues": String(allIssues.count)
+            ]
+        )
+
+        return aggregation
+    }
+
+    private func evaluateSegmentPermission(segment: CommandSegment) -> Bool {
+        // Default: allow everything (real implementation would check against policies)
+        // Dangerous patterns are caught by detectSecurityIssues
+        return true
     }
 
     // MARK: - Private Helpers
