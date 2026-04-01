@@ -3,6 +3,33 @@ import Combine
 
 private typealias ConcurrencyTask = _Concurrency.Task
 
+/// Context for task execution including permissions, budgets, and cancellation
+struct TaskExecutionContext: Sendable {
+    let budgetTokens: Int
+    let budgetUSD: Double
+    let allowedWorkDirs: Set<String>
+    let permissionMode: String  // "allow", "ask", "deny"
+    let cancelledCheck: @Sendable () -> Bool
+    let decisions: [String: Decision]
+
+    struct Decision: Sendable, Codable {
+        let toolName: String
+        let decision: String  // "allow", "deny"
+        let timestamp: Date
+    }
+
+    static func defaultContext(for task: Task, workDir: String) -> TaskExecutionContext {
+        TaskExecutionContext(
+            budgetTokens: 200_000,  // Default 200k token budget per task
+            budgetUSD: Double.infinity,  // No USD limit initially
+            allowedWorkDirs: [workDir],
+            permissionMode: "allow",  // Default to permissive
+            cancelledCheck: { false },
+            decisions: [:]
+        )
+    }
+}
+
 actor AgentOrchestrator: ObservableObject {
     @MainActor @Published var currentProject: ProjectContext?
     @MainActor @Published var agents: [String: Agent] = [:]
@@ -86,6 +113,18 @@ actor AgentOrchestrator: ObservableObject {
             self.statusMessage = "Starting project: \(project.name)"
         }
 
+        // Check for existing checkpoint and resume if available
+        if let checkpoint = try? await stateManager.loadSessionCheckpoint(projectId: project.id) {
+            await MainActor.run {
+                self.statusMessage = "Resuming project from checkpoint at \(checkpoint.timestamp)"
+            }
+
+            // Resume from checkpoint
+            await MainActor.run {
+                self.agents = Dictionary(uniqueKeysWithValues: checkpoint.agents.map { ($0.id, $0) })
+            }
+        }
+
         // Start the orchestration loop
         orchestrationTask = ConcurrencyTask {
             await self.runOrchestrationLoop(projectId: project.id)
@@ -94,6 +133,18 @@ actor AgentOrchestrator: ObservableObject {
 
     func pauseProject() async {
         orchestrationTask?.cancel()
+
+        // Save checkpoint before pausing
+        if let project = await currentProject {
+            let agents = await MainActor.run { self.agents }
+            if let taskGraph = try? await stateManager.loadTaskGraph(projectId: project.id) {
+                try? await stateManager.saveSessionCheckpoint(
+                    projectId: project.id,
+                    agents: agents,
+                    taskGraph: taskGraph
+                )
+            }
+        }
 
         await MainActor.run {
             self.isRunning = false
@@ -226,67 +277,106 @@ actor AgentOrchestrator: ObservableObject {
         updatedAgent.currentTaskId = task.id
         updatedAgent.status = .coding
         updatedAgent.startedAt = Date()
-
         agents[agent.id] = updatedAgent
 
-        do {
-            try await updateAgentStatus(agent.id, to: .coding, projectId: projectId)
+        // Prepare execution context with budget and permission info
+        let executionContext = TaskExecutionContext.defaultContext(
+            for: task,
+            workDir: stateManager.workspaceDirectory(for: projectId).path
+        )
 
-            // Get skill prompt for this task
-            let skillId = skillRegistry.getSkillsForRole(agent.role).first?.id ?? "generic:fallback"
-            let skillPrompt = skillRegistry.getSkillPrompt(skillId: skillId, role: agent.role)
+        // Attempt task with exponential backoff retry
+        var currentTask = task
+        var lastError: Error?
 
-            // Run the task through Claude
-            let output = try await claudeRunner.runTask(
-                agentId: agent.id,
-                role: agent.role,
-                projectId: projectId,
-                task: task,
-                skillPrompt: skillPrompt,
-                workDir: stateManager.workspaceDirectory(for: projectId)
-            )
-
-            // Mark task as completed
-            try taskGraph.markCompleted(taskId: task.id, output: output.output ?? output.summary)
-
-            updatedAgent.status = output.status == "success" ? .success : .failed
-            updatedAgent.lastOutput = output.summary
-            updatedAgent.currentTaskId = nil
-
-            agents[agent.id] = updatedAgent
-
-            try await stateManager.saveTaskGraph(taskGraph, projectId: projectId)
-            try await stateManager.saveAgentState(updatedAgent, projectId: projectId)
-
-            await MainActor.run {
-                self.statusMessage = "Agent \(agent.name) completed task: \(output.summary)"
-                self.agents = agents
-            }
-        } catch {
-            updatedAgent.status = .failed
-            updatedAgent.errorMessage = error.localizedDescription
-            updatedAgent.retryCount += 1
-
-            agents[agent.id] = updatedAgent
-
+        for attemptIndex in 0..<task.retryPolicy.maxAttempts {
             do {
-                if updatedAgent.retryCount < updatedAgent.maxRetries {
-                    // Mark task for retry
-                    try taskGraph.markFailed(taskId: task.id, error: error.localizedDescription)
-                } else {
-                    // Mark task as failed permanently
-                    try taskGraph.markFailed(taskId: task.id, error: "Max retries exceeded: \(error.localizedDescription)")
-                }
+                try await updateAgentStatus(agent.id, to: .coding, projectId: projectId)
+
+                // Get skill prompt for this task
+                let skillId = skillRegistry.getSkillsForRole(agent.role).first?.id ?? "generic:fallback"
+                let skillPrompt = skillRegistry.getSkillPrompt(skillId: skillId, role: agent.role)
+
+                // Run the task through Claude with execution context
+                let output = try await claudeRunner.runTask(
+                    agentId: agent.id,
+                    role: agent.role,
+                    projectId: projectId,
+                    task: currentTask,
+                    skillPrompt: skillPrompt,
+                    workDir: stateManager.workspaceDirectory(for: projectId),
+                    context: executionContext
+                )
+
+                // Success: mark task as completed
+                try taskGraph.markCompleted(taskId: task.id, output: output.output ?? output.summary)
+
+                updatedAgent.status = output.status == "success" ? .success : .failed
+                updatedAgent.lastOutput = output.summary
+                updatedAgent.currentTaskId = nil
+                updatedAgent.retryCount = 0
+                agents[agent.id] = updatedAgent
 
                 try await stateManager.saveTaskGraph(taskGraph, projectId: projectId)
                 try await stateManager.saveAgentState(updatedAgent, projectId: projectId)
-            } catch {
-                // Silently fail to save, will retry next iteration
-            }
 
-            await MainActor.run {
-                self.statusMessage = "Agent \(agent.name) failed: \(error.localizedDescription)"
-                self.agents = agents
+                // Save session checkpoint after successful task completion
+                try await stateManager.saveSessionCheckpoint(
+                    projectId: projectId,
+                    agents: agents,
+                    taskGraph: taskGraph
+                )
+
+                await MainActor.run {
+                    self.statusMessage = "Agent \(agent.name) completed task: \(output.summary)"
+                    self.agents = agents
+                }
+                return  // Success; exit retry loop
+            } catch {
+                lastError = error
+                let isLastAttempt = attemptIndex == task.retryPolicy.maxAttempts - 1
+
+                // Check if error is retryable
+                let providerError = error as? ProviderError ?? ProviderError.classify(error)
+                let shouldRetry = !isLastAttempt && providerError.isRetryable
+
+                if shouldRetry {
+                    // Calculate backoff duration
+                    let backoffDuration = task.retryPolicy.nextBackoffDuration(for: attemptIndex)
+
+                    await MainActor.run {
+                        self.statusMessage = "Agent \(agent.name) retry \(attemptIndex + 1)/\(task.retryPolicy.maxAttempts) after \(String(format: "%.1f", backoffDuration))s: \(error.localizedDescription)"
+                    }
+
+                    // Wait before retrying
+                    try? await ConcurrencyTask.sleep(nanoseconds: UInt64(backoffDuration * 1_000_000_000))
+                } else {
+                    // Error is permanent or final attempt; fail immediately
+                    updatedAgent.status = .failed
+                    updatedAgent.errorMessage = error.localizedDescription
+                    updatedAgent.currentTaskId = nil
+                    agents[agent.id] = updatedAgent
+
+                    do {
+                        try taskGraph.markFailed(taskId: task.id, error: error.localizedDescription)
+                        try await stateManager.saveTaskGraph(taskGraph, projectId: projectId)
+                        try await stateManager.saveAgentState(updatedAgent, projectId: projectId)
+                    } catch {
+                        // Silently fail to save; will retry next iteration
+                    }
+
+                    let attemptMessage = isLastAttempt ? "after \(task.retryPolicy.maxAttempts) attempts" : "permanent error"
+                    let retryable = providerError.isRetryable ? "" : " (non-retryable)"
+                    await MainActor.run {
+                        self.statusMessage = "Agent \(agent.name) failed \(attemptMessage)\(retryable): \(error.localizedDescription)"
+                        self.agents = agents
+                    }
+
+                    // Exit retry loop immediately for permanent errors
+                    if !providerError.isRetryable {
+                        break
+                    }
+                }
             }
         }
     }

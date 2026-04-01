@@ -1,5 +1,36 @@
 import Foundation
 
+struct RetryAttempt: Codable, Equatable, Sendable {
+    let timestamp: Date
+    let error: String
+}
+
+struct RetryPolicy: Codable, Equatable, Sendable {
+    let maxAttempts: Int
+    let initialBackoffMs: Int
+    let maxBackoffMs: Int
+    let backoffMultiplier: Double
+    var attempts: [RetryAttempt] = []
+
+    init(
+        maxAttempts: Int = 3,
+        initialBackoffMs: Int = 100,
+        maxBackoffMs: Int = 30_000,
+        backoffMultiplier: Double = 2.0
+    ) {
+        self.maxAttempts = maxAttempts
+        self.initialBackoffMs = initialBackoffMs
+        self.maxBackoffMs = maxBackoffMs
+        self.backoffMultiplier = backoffMultiplier
+    }
+
+    func nextBackoffDuration(for attemptIndex: Int) -> TimeInterval {
+        let exponentialMs = Double(initialBackoffMs) * pow(backoffMultiplier, Double(attemptIndex))
+        let cappedMs = min(exponentialMs, Double(maxBackoffMs))
+        return cappedMs / 1000.0  // Convert to seconds
+    }
+}
+
 struct Task: Identifiable, Codable, Equatable {
     let id: String
     let description: String
@@ -12,12 +43,20 @@ struct Task: Identifiable, Codable, Equatable {
     var output: String?
     var error: String?
     var artifacts: [String] = []  // Files created by this task
-    var retryCount: Int = 0
-    var maxRetries: Int = 3
+    var retryPolicy: RetryPolicy = RetryPolicy()
     var timeout: TimeInterval = 3600  // 1 hour
     var createdAt: Date = Date()
     var startedAt: Date?
     var completedAt: Date?
+
+    // Backward compatibility
+    var retryCount: Int {
+        retryPolicy.attempts.count
+    }
+
+    var maxRetries: Int {
+        retryPolicy.maxAttempts - 1
+    }
 
     var isReadyToRun: Bool {
         status == .pending && blockedBy.isEmpty
@@ -123,9 +162,9 @@ struct TaskGraph: Codable, Equatable {
         }
 
         task.error = error
-        task.retryCount += 1
+        task.retryPolicy.attempts.append(RetryAttempt(timestamp: Date(), error: error))
 
-        if task.retryCount >= task.maxRetries {
+        if task.retryPolicy.attempts.count >= task.retryPolicy.maxAttempts {
             task.status = .failed
             task.completedAt = Date()
         } else {
