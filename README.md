@@ -1,6 +1,6 @@
 # 🧠 Neptune — Local Autonomous Agent Platform
 
-[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)](https://github.com/711634/neptune/releases)
+[![Release](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/711634/Neptune/releases)
 [![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-brightgreen)](https://www.apple.com/macos/)
 [![Windows 11](https://img.shields.io/badge/Windows-11-blue)](https://www.microsoft.com/windows/)
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)](https://swift.org)
@@ -323,7 +323,7 @@ See [LICENSE](LICENSE) for full terms.
 
 <div align="center">
 
-**Neptune v1.0-beta** — *Local autonomous agents, no cloud required*
+**Neptune v1.1.0** — *Local autonomous agents, no cloud required*
 
 🌊 *"Neptune: Where agents flow like water, not electricity."*
 

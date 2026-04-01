@@ -5,6 +5,62 @@ All notable changes to Neptune will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-02
+
+### Added
+
+#### Execution Guardrails (Runtime Safety)
+- **ExecutionGuardrails actor** — Configurable iteration, tool call, time, and progress limits
+- **ExecutionHealth monitoring** — Real-time health status with actionable stop conditions
+- **Three preset modes** — default, conservative, aggressive (via `NEPTUNE_GUARDRAIL_MODE`)
+- **Guardrail enforcement** — Integrated into orchestration loop with early-exit pattern
+- **90% warning threshold** — Dashboard alert when approaching limits
+
+#### Task Batching (Efficiency)
+- **TaskBatcher actor** — Intelligent grouping of related tasks
+- **Five batching strategies** — byRole, byDependencyDepth, byModule, byUrgency, hybrid
+- **Automatic activation** — Enabled for 3+ ready tasks, hybrid strategy by default
+- **Batch metrics** — Success rate, task duration, parallelism achieved per batch
+- **Graceful fallback** — Direct assignment for small task counts
+
+#### Execution Diagnostics (Observability)
+- **ExecutionDiagnosticsObserver actor** — Comprehensive failure tracking
+- **FailureDiagnostic** — Error type, message, context, recovery suggestions
+- **ExecutionMetrics** — Success rate, failure rate, duration, memory, batch stats
+- **Failure summary** — Aggregated by error type with recovery suggestions
+- **Dashboard integration** — Real-time alerts, failure timeline, metrics view
+
+#### Safety Enforcement (Runtime Validation)
+- **SafetyEnforcementGate actor** — Pre-flight and runtime safety validation
+- **Pre-flight checks** — Verify task authorization and detect suspicious patterns
+- **File operation validation** — Validate paths, detect dangerous patterns
+- **Violation tracking** — Log all access attempts with allow/deny decisions
+- **Safety dashboard** — Project safety status, violation history, violation threshold
+
+#### Checkpoint Validation (Resumability)
+- **CheckpointValidator actor** — Ensure safe recovery from crashes
+- **Integrity validation** — Verify checkpoint structure and consistency
+- **Resumption safety** — Prevent unsafe resumption, analyze problematic tasks
+- **Ready agent analysis** — Count agents in safe state for resumption
+
+#### Enhanced Retry Policy
+- **Configurable jitter** — `jitterFraction` prevents thundering herd on retry
+- **Updated policies** — default (20%), aggressive (10%), conservative (30%) jitter
+- **Better distribution** — Reduces synchronized failures during transient issues
+
+### Improved
+
+- **AgentOrchestrator** — Integrated guardrails, batching, diagnostics, and safety into orchestration loop
+- **StateManager** — Added guardrails and checkpoint validation to session state
+- **Documentation** — Updated README (v1.1.0 badge), RELEASE_NOTES, and architectural docs
+- **Logging** — Enhanced observability with structured logging throughout execution pipeline
+
+### Fixed
+
+- **Version consistency** — Updated Info.plist to reflect 1.1.0
+- **Documentation gaps** — RELEASE_NOTES now describes all current features
+- **Architecture docs** — Added reference-codebase-learnings documenting patterns adopted
+
 ## [1.0.0-beta] - 2026-03-31
 
 ### Added
