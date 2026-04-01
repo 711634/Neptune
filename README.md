@@ -1,7 +1,8 @@
 # 🧠 Neptune — Local Autonomous Agent Platform
 
-[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)](https://github.com/anthropics/neptune/releases)
+[![Release](https://img.shields.io/badge/version-1.0.0--beta-blue)](https://github.com/711634/neptune/releases)
 [![macOS 13.0+](https://img.shields.io/badge/macOS-13.0+-brightgreen)](https://www.apple.com/macos/)
+[![Windows 11](https://img.shields.io/badge/Windows-11-blue)](https://www.microsoft.com/windows/)
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)](https://swift.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
@@ -27,18 +28,27 @@ Launch agents that understand your code, break down complex goals into task grap
 
 ## 🚀 Quick Start
 
-### 1. Install
+### macOS
 
-1. Download [Neptune.dmg](https://github.com/anthropics/neptune/releases)
+1. Download [Neptune.dmg](https://github.com/711634/Neptune/releases)
 2. Double-click to mount → Drag `Neptune.app` to `/Applications`
 3. Eject the disk image
 4. Launch Neptune from `/Applications/Neptune.app`
 
-### 2. Configure
-
 On first launch:
 - **Set Claude Path** → Typically `/opt/homebrew/bin/claude`
 - **Verify Claude** → Run `claude --version` in Terminal
+- **Create a project** → Click "New Project" in the Dashboard
+
+### Windows
+
+1. Download `Neptune_x.x.x_x64_en-US.msi` from [Releases](https://github.com/711634/Neptune/releases)
+2. Run the installer and follow the prompts
+3. Launch Neptune from the Start Menu or Desktop shortcut
+
+On first launch:
+- **Set Claude Path** → Typically `C:\Users\<you>\AppData\Roaming\npm\claude.cmd` or wherever `claude` is installed
+- **Verify Claude** → Run `claude --version` in a terminal
 - **Create a project** → Click "New Project" in the Dashboard
 
 ### 3. Start Autonomous Workflow
@@ -61,13 +71,15 @@ On first launch:
 
 ## 📋 Requirements
 
-- **macOS 13.0+** (Intel or Apple Silicon)
-- **Claude Code CLI** installed and authenticated
-  ```bash
-  which claude
-  claude --version
-  ```
-- **Active Claude subscription** (Neptune uses local authentication via Claude Code)
+**macOS:**
+- macOS 13.0+ (Intel or Apple Silicon)
+- Claude Code CLI installed and authenticated (`which claude && claude --version`)
+- Active Claude subscription
+
+**Windows:**
+- Windows 10/11 (ARM64 or x64)
+- Claude Code CLI installed and authenticated (`where claude && claude --version`)
+- Active Claude subscription
 
 ---
 
@@ -253,35 +265,21 @@ Access settings from the menu bar or cmd+comma:
 - ✅ File-based state persistence
 - ⚠️ Blueprint templates (MVP set; expand as needed)
 
-### 🔄 Windows (Multi-Phase Roadmap)
-
-**Phase 1: Core Extraction (Q2 2026)**
-- Extract orchestration to Rust library
-- Define portable state format
-- Create C# FFI bindings
-
-**Phase 2: Windows Shell (Q3 2026)**
-- WPF or MAUI desktop UI
-- Tray icon integration (vs. dock pets)
-- Same provider adapter system
-
-**Phase 3: Windows Integration (Q3 2026)**
-- Claude Code CLI detection
-- VS Code integration
-- Windows-specific features
-
-**Phase 4: Testing & Hardening (Q4 2026)**
-- E2E testing
-- Performance tuning
-- Release candidate
-
-**Current Status:** Roadmap documented, implementation begins Q2 2026.
+### ✅ Windows v1.0-beta (Available)
+- ✅ Tauri-based desktop app (Rust + React)
+- ✅ Multi-agent orchestration core
+- ✅ Task graphs with dependencies
+- ✅ Provider adapter system (Claude Code CLI, Claude Desktop, VS Code)
+- ✅ Dashboard & live visualization
+- ✅ Settings management
+- ✅ File-based state persistence (`%APPDATA%\Neptune`)
+- ✅ MSI installer
 
 ---
 
 ## 🐛 Known Limitations
 
-- **Windows** — Not yet available (see roadmap above)
+- **Windows** — v1.0-beta available; feature parity with macOS coming in future releases
 - **Blueprint system** — Currently MVP (expand as needed)
 - **Offline mode** — Requires Claude Code CLI (not bundled)
 - **Custom agents** — YAML-based skills only (code-based agents in future)

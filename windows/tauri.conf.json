@@ -1,6 +1,6 @@
 {
   "productName": "Neptune",
-  "version": "1.0.0-beta",
+  "version": "1.0.0",
   "identifier": "com.neptune.app",
   "build": {
     "beforeBuildCommand": "npm run build",
@@ -28,6 +28,7 @@
     "active": true,
     "targets": ["msi"],
     "icon": [
+      "icons/icon.ico",
       "icons/icon_128x128.png",
       "icons/icon_128x128@2x.png",
       "icons/icon_32x32.png",

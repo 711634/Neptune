@@ -1,6 +1,6 @@
 [package]
 name = "neptune"
-version = "1.0.0-beta"
+version = "1.0.0"
 description = "Local autonomous agent platform for Windows"
 authors = ["Neptune Contributors"]
 edition = "2021"

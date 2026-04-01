@@ -19,13 +19,12 @@ impl VSCodeIntegration {
     /// Find VS Code installation
     pub fn find_vscode_path() -> Result<String> {
         // Try registry first
-        if let Ok(hklm) = RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE) {
-            if let Ok(key) = hklm.open_subkey(
-                "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Code.exe",
-            ) {
-                if let Ok(path) = key.get_value::<String, _>("") {
-                    return Ok(path);
-                }
+        let hklm = RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE);
+        if let Ok(key) = hklm.open_subkey(
+            "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Code.exe",
+        ) {
+            if let Ok(path) = key.get_value::<String, &str>("") {
+                return Ok(path);
             }
         }
 
